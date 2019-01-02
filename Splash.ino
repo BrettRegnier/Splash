@@ -17,6 +17,7 @@ class WaterDetector
 	
 	bool Detect()
 	{
+		// water detected t = LOW, and t = HIGH water undetected
 		uint8_t t = digitalRead(_pin);
 		_state = (t == LOW);
 		return _state;
@@ -56,7 +57,10 @@ class Component
 	}
 };
 
-WaterDetector wd(13);
+const int DETECTORS = 2;
+
+WaterDetector resevoirDetector(8);
+WaterDetector detectors[2] = {WaterDetector(7), WaterDetector(13)};
 Component relay(7);
 
 void setup()
@@ -69,9 +73,18 @@ void setup()
 void loop()
 {
 	// Water is not detected
-	if (!wd.Detect())
+	if (resevoirDetector.Detect())
 	{
-		relay.Toggle(1000);
+		bool needsWatering = true;
+		for (int i = 0; i < 2; i++)
+		{
+			needsWatering = (needsWatering && !detectors[i].Detect()); 
+		}
+		
+		if (needsWatering)
+		{
+			relay.Toggle(1000);
+		}	
 	}
 	
 	// Sleep for an hour
