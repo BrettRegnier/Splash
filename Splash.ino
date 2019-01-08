@@ -63,17 +63,25 @@ class Component
 		_state = false;
 		digitalWrite(_pin, HIGH);
 	}
+	
+	void TurnOn()
+	{
+		_state = true;
+		digitalWrite(_pin, LOW);
+	}
 };
 
 const int DETECTORS = 2;
 
-WaterDetector resevoirDetector(3);
+WaterDetector resevoirDetector(5);
 WaterDetector detectors[DETECTORS] = {WaterDetector(12), WaterDetector(13)};
-Component relay(2);
+Component pumpRelay(2);
+Component powerRelay(3);
 
 void setup()
 {
-	relay.Begin();
+	pumpRelay.Begin();
+	powerRelay.Begin();
 	for (int i = 0; i < DETECTORS; i++)
 		detectors[i].Begin();
 	resevoirDetector.Begin();
@@ -82,6 +90,13 @@ void setup()
 
 void loop()
 {
+	// Turn on power to sensors
+	// and check readings
+	powerRelay.TurnOn();
+	
+	// Wait a bit before checking to allow for readings to come in
+	delay(3000);
+	
 	// There must be water in the resevoir to proceed
 	if (resevoirDetector.Detect())
 	{
@@ -91,14 +106,17 @@ void loop()
 
 		if (needsWatering)
 		{
-			relay.Toggle(5000);
+			pumpRelay.Toggle(5000);
 		}
 	}
 	else
 	{
-		relay.TurnOff();
+		pumpRelay.TurnOff();
 	}
+	
+	// turn off the power relay 
+	powerRelay.TurnOff();
 
 	// Sleep for an hour
-	delay(360000);
+	delay(3600000);
 }
