@@ -139,10 +139,8 @@ void loop()
     }
   } while (millis() < _time + _waterTime);
 
-  //  for (int i = 0; i < readTime; i++)
-  //    Serial.println(data[i]);
-
-
+  // make sure the pump relay has been turned off after the allotted time.
+  pumpRelay.TurnOff();
   // turn off the power relay
   powerRelay.TurnOff();
 
