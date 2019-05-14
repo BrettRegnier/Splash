@@ -107,8 +107,16 @@ void loop()
 {
   // Turn on power to sensors
   // and check readings
+  unsigned long _time = millis();
+  unsigned long _waterTime = 0;  
+  
   powerRelay.TurnOn();
-  delay(900);
+  delay(900); // allow for the sensors to start detecting water
+
+  int readTime = 10;
+  int data[readTime];
+  detectors[0].Read(&data[0], readTime);
+  
   do
   {
     // There must be water in the resevoir to proceed
@@ -118,23 +126,19 @@ void loop()
       for (int i = 0; i < DETECTORS; i++)
         needsWatering = (needsWatering && !detectors[i].Detect());
 
-      if (needsWatering)
+      if (needsWatering && _waterTime <= 0)
       {
-        pumpRelay.Toggle();
-        sleepTime = 5000;
+        pumpRelay.TurnOn();
+        _waterTime = 5000;
       }
     }
     else
     {
       pumpRelay.TurnOff();
-      sleepTime = 0 ;
+      _waterTime = 0 ;
     }
-  } while (sleepTime-- > 0);
+  } while (millis() < _time + _waterTime);
 
-  delay(900);
-  int readTime = 10;
-  int data[readTime];
-  detectors[0].Read(&data[0], readTime);
   //  for (int i = 0; i < readTime; i++)
   //    Serial.println(data[i]);
 
