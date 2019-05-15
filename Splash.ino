@@ -26,15 +26,9 @@ class WaterDetector
       return _state;
     }
 
-    void Read(int *data, int readTime)
+    int Read()
     {
-      // TODO fix this garbage.
-      // not returning the pointer correctly and causing the program to crash
-      for (int i = 0; i < readTime; i++)
-      {
-        data[i] = analogRead(_analogPin);
-        Serial.println(data[i]);
-      }
+      return analogRead(_analogPin);
     }
 };
 
@@ -109,16 +103,23 @@ void loop()
   // and check readings
   unsigned long _time = millis();
   unsigned long _waterTime = 0;  
+  unsigned long _read = _time;
+  unsigned long _readTime = 100;;
+
+  // read data
+  int data[10];
   
   powerRelay.TurnOn();
   delay(900); // allow for the sensors to start detecting water
-
-  int readTime = 10;
-  int data[readTime];
-  detectors[0].Read(&data[0], readTime);
   
   do
   {
+    if (millis() > _read + _readTime)
+    {
+      // todo finish this.
+      _read = millis();
+    }
+    
     // There must be water in the resevoir to proceed
     if (resevoirDetector.Detect())
     {
