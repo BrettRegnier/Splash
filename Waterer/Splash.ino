@@ -107,44 +107,55 @@ void loop()
 {
     // Turn on power to sensors
     // and check readings
-    unsigned long _time = millis();
-    unsigned long _waterTime = 0;
+    unsigned long wateringEnd = millis();
+    unsigned long waterDuration = 5000;
 
-    unsigned long _read = millis();
-    unsigned long _readTime = 2000;
-    bool needsWatering = true;
+    unsigned long readEnd = millis();
+    unsigned long readDuration = 2000;
+    unsigned int readCnt = 0;
+    unsigned int moisture = 0;
+    bool needsWatering = false;
 
     powerRelay.TurnOn();
     delay(1000); // allow for the sensors to start detecting water
 
     // Time that is to be reading
     do
-    { 
-        // Time in which we need to be watering
-        do
+    {
+        // Read the current reporting analog levels.
+        for (int i = 0; i < DETECTORS; i++)
+        {
+            moisture += detectors[i].Read();
+            readCnt++;
+        }
+
+        if (needsWatering == false)
         {
             needsWatering = true;
+
+            // Check if watering is needed
             for (int i = 0; i < DETECTORS; i++)
-            {
-                // Check if watering is needed and the analog levels.
                 needsWatering = (needsWatering && !detectors[i].Detect());
-                Serial.println(detectors[i].Read());
-            }
+
             if (resevoirDetector.Detect() && needsWatering)
             {
                 pumpRelay.TurnOn();
-                _time = millis();
-                _waterTime = 5000;
+                wateringEnd = millis() + waterDuration;
+                readEnd = wateringEnd + waterDuration; // read after watering
             }
-            else
-            {
-                // TODO could add in a flashing LED and set a global variable such that the resevoir needs water
-                pumpRelay.TurnOff();
-                _waterTime = 0;
-                break;
-            }
-        } while (millis() < _time + _waterTime);
-    } while (millis() < _read + _readTime);
+        }
+
+        if (!resevoirDetector.Detect() && millis() < wateringEnd)
+        {
+            // TODO could add in a flashing LED and set a global variable such that the resevoir needs water
+            pumpRelay.TurnOff();
+            waterDuration = 0;
+            break;
+        }
+    } while (millis() < readEnd);
+
+    // get the average water level(s)
+    moisture = moisture / readCnt;
 
     // make sure the pump relay has been turned off after the allotted time.
     pumpRelay.TurnOff();
