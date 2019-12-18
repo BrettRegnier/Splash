@@ -3,12 +3,28 @@
         {
             "name": "Win32",
             "includePath": [
+                "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
+                "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\**",
                 "D:\\dev\\IDE\\Arduino\\tools\\**",
-                "D:\\dev\\IDE\\Arduino\\hardware\\arduino\\avr\\**"
+                "D:\\dev\\IDE\\Arduino\\hardware\\arduino\\avr\\**",
+                "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**",
+                "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
+                "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\**",
+                "C:\\Users\\Brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\**",
+                "C:\\Users\\Brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**"
             ],
-            "forcedInclude": [
-                "D:\\dev\\IDE\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h"
-            ],
+            "browse": {
+                "path": [
+                    "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
+                    "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\**",
+                    "D:\\dev\\IDE\\Arduino\\tools\\**",
+                    "D:\\dev\\IDE\\Arduino\\hardware\\arduino\\avr\\**",
+                    "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.2\\**",
+                    "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\**",
+                    "C:\\Users\\brett\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.6.3\\libraries\\ESP8266WiFi\\src\\*"
+                ]
+            },
+            "forcedInclude": [],
             "intelliSenseMode": "msvc-x64",
             "compilerPath": "D:\\dev\\tools\\mingw\\bin\\gcc.exe",
             "cStandard": "c11",
