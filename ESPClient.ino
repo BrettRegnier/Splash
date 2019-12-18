@@ -124,16 +124,18 @@ void setup()
 }
 
 void loop()
-{
+{// TODO add a big if based on the time... so it doesn't check after a set time. 
+
+
     // Turn on power to sensors
     // and check readings
-    unsigned long wateringEnd = millis();
     unsigned long waterDuration = 5000;
+    unsigned long wateringEnd = millis();
 
-    unsigned long readEnd = millis();
     unsigned long readDuration = 2000;
+    unsigned long readEnd = millis() + readDuration;
     unsigned int readCnt = 0;
-    unsigned int moisture = 0;
+    unsigned long moisture = 0;
     bool needsWatering = false;
 
     powerRelay.TurnOn();
@@ -146,6 +148,7 @@ void loop()
         for (int i = 0; i < DETECTORS; i++)
         {
             moisture += detectors[i].Read();
+            //            Serial.println(detectors[i].Read());
             readCnt++;
         }
 
@@ -161,10 +164,10 @@ void loop()
             {
                 pumpRelay.TurnOn();
                 wateringEnd = millis() + waterDuration;
-                readEnd = wateringEnd + waterDuration; // read after watering
+                readEnd = millis() + readDuration; // read after watering
             }
         }
-        
+
         if (!resevoirDetector.Detect() && millis() < wateringEnd)
         {
             // TODO could add in a flashing LED and set a global variable such that the resevoir needs water
@@ -175,7 +178,7 @@ void loop()
     } while (millis() < readEnd);
 
     // get the average water level(s)
-    moisture = moisture / readCnt;
+    Serial.println(moisture);
 
     // make sure the pump relay has been turned off after the allotted time.
     pumpRelay.TurnOff();
@@ -183,7 +186,7 @@ void loop()
     powerRelay.TurnOff();
 
     // Sleep for an hour
-    delay(3600000);
+    // delay(3600000);
 
     // Use WiFiClient class to create TCP connections
     WiFiClient client;
