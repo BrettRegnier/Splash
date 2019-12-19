@@ -1,19 +1,18 @@
--- The plant should be watered based on the detected moisure level 
-        instead of the digital detection, therefore depending on the plant
-        it can be adjusted.
-    --Make watering based on the analog levels instead of the digital levels or 
-        at least both.
-            -Need to rethink completely how I am doing the reading loops.
+    HARD MAYBE
+-- The code will need to change based on the clock speed of the esp module.
 
--- multiple sensor moisure readings.
+-- SQL requests should be queued and handled on the main thread or on another thread.
 
 -- Add an LED to blink when the resevoir is out of water (not a priority)
 
 -- Features:
-    On the website the server can be told (the changes will occur once every time it reconnects)
-        -at what moisture level should be watered.
-        -how many times to water in 1 day.
-        -how frequently to check the water levels. (needs a min and max?)
-        -Different sensors have different informations on the site?
+    -On the website the server can be told (the changes will occur once every time it reconnects)
+        1. Name of plant
+        2. Moisture level to water at
+        3. How many times a day (frequency)
+        4. Range of acceptable times to water
+        5. Detect type
+        6. Timezone
+        7. Pump duration.
 
-        -Temperature monitor?
+    -Temperature monitor?   

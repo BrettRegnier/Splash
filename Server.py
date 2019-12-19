@@ -50,6 +50,8 @@ class Server:
                     print(args[inc])
                     inc += 1
 
+
+                    # TODO send back server config settings.
                     # client.send(bytes("hello", "utf-8"))
                     # client.send(bytes(data))
                 else:
