@@ -122,8 +122,6 @@ void setup()
 	ConnectToWifi();
 	InitTime();
 	InitComponents();
-
-	Serial.println(_waterDuration);
 }
 
 void loop()
@@ -133,25 +131,26 @@ void loop()
 	struct tm *p_tm = localtime(&now);
 	uint8_t hr = p_tm->tm_hour;
 
-	uint8_t toWater = 0; // 0 doesn't get watered | 1 gets watered.
-	uint32_t preMoistures[DETECTORS];
-	uint32_t postMoistures[DETECTORS];
-
-	// init moistures stride-1 access
-	for (int i = 0; i < DETECTORS; i++)
-		preMoistures[i] = 0;
-	for (int i = 0; i < DETECTORS; i++)
-		postMoistures[i] = 0;
-
-	_powerRelay.TurnOn(); // turn on power to the peripherals
-	delay(1000);		  // allow for the sensors to start detecting water
-
-	// read the water levels before watering
-	ReadWaterLevels(preMoistures);
-
-	// time should be within a certain time period. 7am < time <10pm
 	if (hr > _morningThreshold && hr < _eveningThreshold)
 	{
+		uint8_t toWater = 0; // 0 doesn't get watered | 1 gets watered.
+		uint32_t preMoistures[DETECTORS];
+		uint32_t postMoistures[DETECTORS];
+
+		// init moistures stride-1 access
+
+		for (int i = 0; i < DETECTORS; i++)
+			preMoistures[i] = 0;
+		for (int i = 0; i < DETECTORS; i++)
+			postMoistures[i] = 0;
+
+		_powerRelay.TurnOn(); // turn on power to the peripherals
+		delay(1000);		  // allow for the sensors to start detecting water
+
+		// read the water levels before watering
+		ReadWaterLevels(preMoistures);
+
+		// time should be within a certain time period. 7am < time <10pm
 		if (_detectType == 0) // detect using digital
 			toWater = WateringDigital();
 		else if (_detectType == 1)
@@ -176,146 +175,174 @@ void loop()
 			_pumpRelay.TurnOff();
 			ReadWaterLevels(postMoistures);
 		}
-	}
+		_powerRelay.TurnOff(); // turn off power to peripherals
 
-	Serial.println(toWater);
-	int x = 10;
-	Serial.println(sizeof(x));
-	_powerRelay.TurnOff(); // turn off power to peripherals
+		// Use WiFiClient class to create TCP connections
+		Serial.println("Connect to host");
+		WiFiClient client;
+		if (!client.connect(_host, _port))
+		{
+			// connection failed, so just try again next loop.
+			delay(5000);
+			return;
+		}
 
-	// client -> server code here.
-
-	// Use WiFiClient class to create TCP connections
-	Serial.println("Connect to host");
-	WiFiClient client;
-	if (!client.connect(_host, _port))
-	{
-		// connection failed, so just try again next loop.
-		delay(5000);
-		return;
-	}
-
-	// Send data to the server in a big byte array
-	/* Send:
+		// Send data to the server in a big byte array
+		/* Send:
 	** _name = name of plant
 	** _detectors = number of detectors
 	** preMoistures = moisture before watering
 	** toWater = 0 not watered | 1 watered, effects the next send.
 	** postMoistures = moisture after watering
 	*/
-	if (client.connected())
-	{
-		// for testing
-		preMoistures[0] = 200;
-		toWater = 1;
-		postMoistures[0] = 100;
 
-		int sizeName = 0;
-		while (_name[sizeName] != '\0')
-			sizeName++;
-
-		int sizeDetectors = 0;
-		char *s_detectors = ConvertIntToCharLiteral(DETECTORS, sizeDetectors);
-
-		int sizeToWater = 0;
-		char *s_toWater = ConvertIntToCharLiteral(toWater, sizeToWater);
-
-		// Convert data into *char
-		int totalSizePreMoist = 0;
-		int sizePreMoist[DETECTORS];
-		char *s_preMoistures[DETECTORS];
-		for (int i = 0; i < DETECTORS; i++)
+		if (client.connected())
 		{
-			s_preMoistures[i] = ConvertIntToCharLiteral(preMoistures[i], sizePreMoist[i]);
-			totalSizePreMoist += sizePreMoist[i];
-		}
+			// TODO remove this after testing
+			preMoistures[0] = 200;
+			toWater = 1;
+			postMoistures[0] = 100;
 
-		int totalSizePostMoist = 0;
-		int sizePostMoist[DETECTORS];
-		char *s_postMoistures[DETECTORS];
-		if (toWater)
+			int sizeName = 0;
+			while (_name[sizeName] != '\0')
+				sizeName++;
+
+			int sizeDetectors = 0;
+			char *s_detectors = ConvertIntToCharLiteral(DETECTORS, sizeDetectors);
+
+			int sizeToWater = 0;
+			char *s_toWater = ConvertIntToCharLiteral(toWater, sizeToWater);
+
+			// Convert data into *char
+			int totalSizePreMoist = 0;
+			int sizePreMoist[DETECTORS];
+			char *s_preMoistures[DETECTORS];
 			for (int i = 0; i < DETECTORS; i++)
 			{
-				s_postMoistures[i] = ConvertIntToCharLiteral(postMoistures[i], sizePostMoist[i]);
-				totalSizePostMoist += sizePostMoist[i];
+				s_preMoistures[i] = ConvertIntToCharLiteral(preMoistures[i], sizePreMoist[i]);
+				totalSizePreMoist += sizePreMoist[i];
 			}
 
-		// // for testing.
-		// Serial.println("preMoistures");
-		// for (int i = 0; i < DETECTORS; i++)
-		// 	for (int j = 0; j < sizePreMoist[i]; j++)
-		// 		Serial.println(s_preMoistures[i][j]);
+			int totalSizePostMoist = 0;
+			int sizePostMoist[DETECTORS];
+			char *s_postMoistures[DETECTORS];
+			if (toWater)
+				for (int i = 0; i < DETECTORS; i++)
+				{
+					s_postMoistures[i] = ConvertIntToCharLiteral(postMoistures[i], sizePostMoist[i]);
+					totalSizePostMoist += sizePostMoist[i];
+				}
 
-		int sizeSeperators = 3; // 3 seperators ';'
-		if (toWater)
-			sizeSeperators = 4; // 4 seperators ';'
+			// // for testing.
+			// Serial.println("preMoistures");
+			// for (int i = 0; i < DETECTORS; i++)
+			// 	for (int j = 0; j < sizePreMoist[i]; j++)
+			// 		Serial.println(s_preMoistures[i][j]);
 
-		size_t s = sizeof(char) * (sizeName +
-								   totalSizePreMoist +
-								   sizeToWater +
-								   totalSizePostMoist +
-								   sizeSeperators);
+			int sizeSeperators = 3; // 3 seperators ';'
+			if (toWater)
+				sizeSeperators = 4; // 4 seperators ';'
 
-		int idx = 0;
-		char *msg = (char *)malloc(s);
+			size_t s = sizeof(char) * (sizeName +
+									   totalSizePreMoist +
+									   sizeToWater +
+									   totalSizePostMoist +
+									   sizeSeperators + 1);
 
-		int i = 0;
-		int j = 0;
+			int idx = 0;
 
-		for (i = 0; i < sizeName; i++)
-			msg[idx + i] = _name[i];
-		idx = sizeName;
+			// intialize and set to empty.
+			char *msg = (char *)malloc(s);
+			for (int i = 0; i < s; i++)
+				msg[i] = ' ';
 
-		msg[idx] = ';'; // seperator
-		idx++;
+			int i = 0;
+			int j = 0;
 
-		for (i = 0; i < sizeDetectors; i++)
-			msg[idx + i] = s_detectors[i];
-		idx += sizeDetectors;
-
-		msg[idx] = ';'; // seperator
-		idx++;
-
-		for (i = 0; i < sizeToWater; i++)
-			msg[idx + i] = s_toWater[i];
-		idx += sizeToWater;
-
-		msg[idx] = ';'; // seperator
-		idx++;
-
-		for (i = 0; i < DETECTORS; i++)
-		{
-			for (j = 0; j < sizePreMoist[i]; j++)
-				msg[idx + j] = s_preMoistures[i][j];
-			idx += sizePreMoist[i];
+			// append the name of the plant
+			for (i = 0; i < sizeName; i++)
+				msg[idx + i] = _name[i];
+			idx = sizeName;
 
 			msg[idx] = ';'; // seperator
 			idx++;
-		}
 
-		if (toWater)
+			// append number of detectors
+			for (i = 0; i < sizeDetectors; i++)
+				msg[idx + i] = s_detectors[i];
+			idx += sizeDetectors;
+
+			msg[idx] = ';'; // seperator
+			idx++;
+
+			// append to water condition
+			for (i = 0; i < sizeToWater; i++)
+				msg[idx + i] = s_toWater[i];
+			idx += sizeToWater;
+
+			msg[idx] = ';'; // seperator
+			idx++;
+
+			// append the premoisture levels
 			for (i = 0; i < DETECTORS; i++)
 			{
-				for (j = 0; j < sizePostMoist[i]; j++)
-					msg[idx + j] = s_postMoistures[i][j];
-				idx += sizePostMoist[i];
+				for (j = 0; j < sizePreMoist[i]; j++)
+					msg[idx + j] = s_preMoistures[i][j];
+				idx += sizePreMoist[i];
 
 				msg[idx] = ';'; // seperator
 				idx++;
 			}
 
-		// Serial.println(msg);
+			// append the postmoisture levels
+			if (toWater)
+				for (i = 0; i < DETECTORS; i++)
+				{
+					for (j = 0; j < sizePostMoist[i]; j++)
+						msg[idx + j] = s_postMoistures[i][j];
+					idx += sizePostMoist[i];
 
-		client.write(msg);
+					msg[idx] = ';'; // seperator
+					idx++;
+				}
+
+			msg[idx] = '\0'; // add to end to end char array.
+
+			Serial.println(msg);
+
+			// Write the message to the server
+			client.write(msg);
+		}
+
+		// wait for data to be available
+		uint32_t timeout = millis() + 5000;
+		bool available = 1;
+		while (client.available() == 0)
+		{
+			if (millis() < timeout)
+			{
+				Serial.println("Client Timeout");
+				available = 0;
+				break;
+			}
+		}
+
+		// if the server is still available, get data
+		if (available)
+		{
+			Serial.println("receiving from remote server");
+			while (client.available())
+			{
+				char ch = static_cast<char>(client.read());
+				Serial.print(ch);
+			}
+		}
+		// Close the connection
+		client.stop();
 	}
-	
-	// TODO take server arguments.
-
-	// Close the connection
-	client.stop();
-
 	// sleep for n time
-	delay(_sleepTime);
+	// delay(_sleepTime);
+	delay(6000);
 }
 
 void ConnectToWifi()
@@ -398,6 +425,8 @@ void ReadWaterLevels(uint32_t *moistures)
 			moistures[i] += _detectors[i].Read();
 			reads[i]++;
 		}
+		// for some reason letting this while loop caused a stack overflow.
+		delay(100);
 	}
 
 	for (int i = 0; i < DETECTORS; i++)

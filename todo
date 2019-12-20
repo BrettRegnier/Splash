@@ -1,7 +1,9 @@
     HARD MAYBE
 -- The code will need to change based on the clock speed of the esp module.
 
--- SQL requests should be queued and handled on the main thread or on another thread.
+-- SQL requests need handling
+
+-- UI
 
 -- Add an LED to blink when the resevoir is out of water (not a priority)
 
