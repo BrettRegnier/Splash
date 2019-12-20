@@ -111,7 +111,7 @@ uint8_t _eveningThreshold = 20; // time to check the levels in the evening
 
 uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
 
-uint8_t _tz = -7;
+int8_t _tz = -7;
 
 uint16_t _waterDuration = 5000;
 
@@ -131,8 +131,10 @@ void loop()
 	struct tm *p_tm = localtime(&now);
 	uint8_t hr = p_tm->tm_hour;
 
+	// PrintTime();
 	if (hr > _morningThreshold && hr < _eveningThreshold)
 	{
+		// Serial.println("Within hours");
 		uint8_t toWater = 0; // 0 doesn't get watered | 1 gets watered.
 		uint32_t preMoistures[DETECTORS];
 		uint32_t postMoistures[DETECTORS];
@@ -232,6 +234,7 @@ void loop()
 					s_postMoistures[i] = ConvertIntToCharLiteral(postMoistures[i], sizePostMoist[i]);
 					totalSizePostMoist += sizePostMoist[i];
 				}
+			
 
 			// // for testing.
 			// Serial.println("preMoistures");
@@ -239,9 +242,7 @@ void loop()
 			// 	for (int j = 0; j < sizePreMoist[i]; j++)
 			// 		Serial.println(s_preMoistures[i][j]);
 
-			int sizeSeperators = 3; // 3 seperators ';'
-			if (toWater)
-				sizeSeperators = 4; // 4 seperators ';'
+			int sizeSeperators = 4; // 3 seperators ';'
 
 			size_t s = sizeof(char) * (sizeName +
 									   totalSizePreMoist +
@@ -275,7 +276,7 @@ void loop()
 			msg[idx] = ';'; // seperator
 			idx++;
 
-			// append to water condition
+			// append toWater condition
 			for (i = 0; i < sizeToWater; i++)
 				msg[idx + i] = s_toWater[i];
 			idx += sizeToWater;
@@ -305,6 +306,17 @@ void loop()
 					msg[idx] = ';'; // seperator
 					idx++;
 				}
+			else
+				// append the premoisture levels again... because they are the same.
+				for (i = 0; i < DETECTORS; i++)
+				{
+					for (j = 0; j < sizePreMoist[i]; j++)
+						msg[idx + j] = s_preMoistures[i][j];
+					idx += sizePreMoist[i];
+
+					msg[idx] = ';'; // seperator
+					idx++;
+				}
 
 			msg[idx] = '\0'; // add to end to end char array.
 
@@ -315,17 +327,19 @@ void loop()
 		}
 
 		// wait for data to be available
-		uint32_t timeout = millis() + 5000;
+		uint32_t timeout = millis() + 10000;
 		bool available = 1;
 		while (client.available() == 0)
 		{
-			if (millis() < timeout)
+			// Serial.print(".");
+			if (millis() > timeout)
 			{
 				Serial.println("Client Timeout");
 				available = 0;
 				break;
 			}
 		}
+		// Serial.println("");
 
 		// if the server is still available, get data
 		if (available)
