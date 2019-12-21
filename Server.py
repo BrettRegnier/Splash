@@ -12,6 +12,7 @@ class Server:
     _sock = None
     _queue = None
     _running = False
+    _db = "Splash.db"
 
     def __init__(self):
         self._sock = socket.socket()
@@ -111,7 +112,7 @@ class Server:
                        postMoistureLevel, time):
         conn = None
         try:
-            conn = sqlite3.connect('Splash.db')
+            conn = sqlite3.connect(self._db)
             c = conn.cursor()
             print("Connected to database")
 
@@ -168,7 +169,7 @@ class Server:
 
     def InsertPlant(self, name, joiningDate):
         try:
-            conn = sqlite3.connect('Splash.db')
+            conn = sqlite3.connect(self._db)
             c = conn.cursor()
             print("Connected to SQLite")
 

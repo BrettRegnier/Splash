@@ -1,9 +1,11 @@
     HARD MAYBE
 -- The code will need to change based on the clock speed of the esp module.
 
+-- UI
+
 -- SQL file that handles everything instead of in the server code.
     -AKA object orientated code instead of spaghet
--- UI
+    
 
 -- Add an LED to blink when the resevoir is out of water (not a priority)
 
