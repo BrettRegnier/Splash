@@ -16,13 +16,3 @@ body {
 footer {	
     background-color: #202020;
 }
-
-.container {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: 15fr 70fr 15fr;
-}
-
-.plant {
-  grid-column: 2 / span 1;
-} */

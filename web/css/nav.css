@@ -1,0 +1,155 @@
+.nav {
+    position: fixed;
+    background-color: #202020;
+    width: 100%;
+    z-index: 99;
+    top: 0;
+}
+
+.nav * {
+    color: white;
+}
+
+.nav__logo {
+    display: block;
+}
+
+.nav__logo .nav__link {
+    display: table-cell;
+    font-size: 40px;
+    position: relative;
+    text-decoration: none;
+    vertical-align: top;
+    transition: text-shadow 500ms;
+}
+
+.nav__logo .nav__link:hover {
+    text-shadow: 0 0 10px #FFDC73;
+}
+
+.nav__container .nav__link {
+    font-size: 20px;
+    position: relative;
+    text-decoration: none;
+    vertical-align: bottom;
+    background-color: transparent;
+    outline: none;
+    cursor: pointer;
+}
+
+.nav__link--active {
+    background-color: #436B48;
+}
+
+@media only screen and (max-width: 600px) {
+    .nav {
+        overflow: hidden;
+        position: relative;
+    }
+    .nav__container {
+        display: none;
+    }
+    .nav__container .nav__content .nav__link {
+        display: block;
+    }
+    .nav__container .nav__link {
+        padding: 10px 10px 10px 10px;
+    }
+    .nav .nav__display {
+        display: block;
+        position: absolute;
+        right: 0px;
+        top: 0px;
+        font-size: 24px;
+        margin: 5px 10px 0px 0px;
+    }
+    .nav .nav__bar {
+        display: block;
+        width: 35px;
+        height: 5px;
+        background-color: white;
+        margin: 6px 0;
+        transition: 0.4s;
+    }
+    .nav .nav__burger {
+        display: inline-block;
+        cursor: pointer;
+    }
+    .nav .nav__burger--change .nav__bar1 {
+        -webkit-transform: rotate(-45deg) translate(-9px, 6px);
+        transform: rotate(-45deg) translate(-9px, 6px);
+    }
+    .nav .nav__burger--change .nav__bar2 {
+        opacity: 0;
+    }
+    .nav .nav__burger--change .nav__bar3 {
+        -webkit-transform: rotate(45deg) translate(-8px, -8px);
+        transform: rotate(45deg) translate(-8px, -8px);
+    }
+    .nav__logo {
+        border-bottom: 2px solid #436B48;
+    }
+    .nav__logo .nav__link {
+        padding: 0px 4px;
+    }
+    .nav__container .nav__link:hover {
+        background-color: #505050;
+    }
+}
+
+@media only screen and (min-width: 600px) {
+    .nav {
+        height: 50px;
+    }
+    .nav * {
+        height: 100%;
+    }
+    .nav__link {
+        display: table-cell;
+    }
+    .nav__logo {
+        height: 100%;
+        float: left;
+    }
+    .nav__logo .nav__link {
+        padding: 0px 20px;
+        margin-right: 10px;
+        border: none;
+    }
+    .nav__container {
+        float: right;
+    }
+    .nav__content {
+        display: table;
+        float: left;
+    }
+    /* Underline */
+    .nav__logo .nav__link:before {
+        background-color: #436B48;
+    }
+    .nav__container .nav__link {
+        padding: 0px 20px 10px 20px;
+    }
+    .nav__link:before {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background-color: #436B48;
+        -webkit-transition: all 0.5s ease-in-out 0s;
+        transition: all 0.5s ease-in-out 0s;
+        visibility: hidden;
+        -webkit-transform: scaleX(0);
+        transform: scaleX(0);
+    }
+    .nav__link:hover:before {
+        visibility: visible;
+        -webkit-transform: scaleX(1);
+        transform: scaleX(1);
+    }
+    .nav__display {
+        display: none;
+    }
+}
