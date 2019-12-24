@@ -1,6 +1,7 @@
 document.onload = function()
 {
 	// get the data returned from php
+	console.log("test");
 }
 
 function DrawMeter(element, w, h, current, previous) 

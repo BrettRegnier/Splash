@@ -1,17 +1,22 @@
 <?php
 
-// query database
-
 $name = 'Hugh';
+$moistureHighest = 0;
+$moistureLowest = 0;
+$moistureAverage = 0;
+$lastMeasurement = 0;
+$lastWatered = 0;
+
 $plants = array();
 
-// need a list of items to print into html
-
 for ($i = 0; $i < 2; $i++) {
+    // TODO query database and adjust variables    
+    
     ob_start();
     include("plant.php");
-    $v = ob_get_clean();
+    $v = ob_get_clean(); // get the ob of plant
     array_push($plants,  $v);
+    
     $name = "jorg";
 }
 ?>
@@ -27,7 +32,6 @@ for ($i = 0; $i < 2; $i++) {
 
     <link href="css/main.css" rel="stylesheet">
     <link href="css/nav.css" rel="stylesheet">
-    <link href="css/styles.css" rel="stylesheet">
 </head>
 
 <body>
@@ -61,7 +65,6 @@ for ($i = 0; $i < 2; $i++) {
         }
         ?>
     </section>
-
 
     <script src="js/nav.js" type="text/javascript" defer="defer"></script>
     <script src="js/plant.js" type="text/javascript"></script>

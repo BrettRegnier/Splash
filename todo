@@ -1,35 +1,39 @@
-    HARD MAYBE
--- The code will need to change based on the clock speed of the esp module.
 
--- UI
-
--- SQL file that handles everything instead of in the server code.
-    -AKA object orientated code instead of spaghet
+Server:
+    -- SQL file that handles everything instead of in the server code.
+        -AKA object orientated code instead of spaghet
     
--- Check water level of resevoir and report it.
-    -add the current level of resevoir to the website in the water wheel and stats
-
--- Add an LED to blink when the resevoir is out of water (not a priority)
-
--- Features:
-    -The water meter should have both the current (small line) and the previous value (thicc line)
-        -on mouse hover/click place ontop and display the value inside of the circle.
-        -add legend
-    -On the website the server can be told (the changes will occur once every time it reconnects)
-        1. Name of plant
-        2. Moisture level to water at
-        3. How many times a day (frequency)
-        4. Range of acceptable times to water
-        5. Detect type
-        6. Timezone
-        7. Pump duration.
-    
-    -Graphs - D3.js
-
-    -Temperature monitor?   
-
-
-Switch to using a mosfets and capacitor sensors
-
-Hard Maybes
+Client:
+        HARD MAYBEs
+    -- The code will need to change based on the clock speed of the esp module.
     -- average water consumption
+
+
+    -- Check water level of resevoir and report it.
+        -add the current level of resevoir to the website in the water wheel and stats
+
+    -- Add an LED to blink when the resevoir is out of water (not a priority)
+    -- Temperature monitor?   
+
+Web:
+    -- Features:
+        -The water meter should have both the current (small line) and the previous value (thicc line)
+            -on mouse hover/click place ontop and display the value inside of the circle.
+            -add legend
+        -On the website the server can be told (the changes will occur once every time it reconnects)
+            1. Name of plant
+            2. Moisture level to water at
+            3. How many times a day (frequency)
+            4. Range of acceptable times to water
+            5. Detect type
+            6. Timezone
+            7. Pump duration.
+        
+    -- Graphs - D3.js
+    -- Ajax to get data from server, for nice clean code instead of tightly coupled code.
+    
+    -- Get the js to run after everything is loaded.
+
+
+Circuit: 
+    Switch to using a mosfets and capacitor sensors
