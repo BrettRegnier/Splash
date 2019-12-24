@@ -10,7 +10,7 @@ html {
 body {
 	margin: 0;
 	height: 100%;
-	background-color: #EEE;
+	background-color: #444;
 }
 
 footer {	
@@ -18,11 +18,46 @@ footer {
 }
 
 .container {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: 15fr 70fr 15fr;
+	display: grid;
+	grid-template-columns: 15fr 70fr 15fr;
+	row-gap: 30px;
+	margin-top: 70px;
 }
 
 .plant {
   grid-column: 2 / span 1;
-} */
+}
+
+.plant__title {
+	border-bottom: 1px solid lightgreen;
+}
+
+.plant__title h2 {
+	margin: 0;
+}
+
+.plant__info {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	column-gap: 15px;
+	font-size: 1.2em;
+}
+
+.meter__legend {
+	margin-left: 10px;
+}
+
+.legend__item span:first-child {
+	display: inline-block;
+	width: 10px;
+    height: 10px;
+}
+
+.legend__item--current {
+	background-color: #2090FF;
+}
+
+.legend__item--previous {
+	background-color: #2040FF;
+}
+
