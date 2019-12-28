@@ -123,11 +123,11 @@ class Server:
                 sql_create_table = '''CREATE TABLE Moistures (
                                         name TEXT NOT NULL,
                                         detectorId INTEGER NOT NULL,
+                                        time timestamp NOT NULL,
                                         wasWatered INTEGER NOT NULL,
                                         preMoistureLevel INTEGER NOT NULL,
-                                        postMoistureLevel INTEGER NOT NULL,
-                                        time timestamp,                                        
-                                        PRIMARY KEY("name", "detectorId")
+                                        postMoistureLevel INTEGER NOT NULL,                                    
+                                        PRIMARY KEY("name", "detectorId", "time")
                                         );
                                         '''
                 c.execute(sql_create_table)
