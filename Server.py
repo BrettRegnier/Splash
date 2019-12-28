@@ -139,7 +139,7 @@ class Server:
             if c.fetchone()[0] == 0:
                 sql_create_table = '''CREATE TABLE Plants (
                                             name TEXT NOT NULL PRIMARY KEY,
-                                            joinDate timestamp
+                                            setupDate timestamp
                                             );
                                             '''
                 c.execute(sql_create_table)
@@ -179,14 +179,14 @@ class Server:
             if c.fetchone()[0] == 0:
                 sql_create_table = '''CREATE TABLE Plants (
                                             name TEXT NOT NULL PRIMARY KEY,
-                                            joinDate timestamp
+                                            setupDate timestamp
                                             );
                                             '''
                 c.execute(sql_create_table)
 
             # Insert a plant
             sql_insert_plant = """INSERT INTO 'Plants'
-                            ('name', 'joinDate') 
+                            ('name', 'setupDate') 
                             VALUES (?, ?);"""
 
             data = (name, joiningDate)
