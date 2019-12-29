@@ -11,6 +11,9 @@ Client:
 
     -- Check water level of resevoir and report it.
         -add the current level of resevoir to the website in the water wheel and stats
+        
+    -- Make class for a "plant" and have the values stored there so I can make it have multiple 
+        plants on one device.
 
     -- Add an LED to blink when the resevoir is out of water (not a priority)
     -- Temperature monitor?   

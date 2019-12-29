@@ -7,6 +7,9 @@ import sqlite3
 from sqlite3 import Error
 
 
+import SplashFunctions
+
+
 class Server:
     _connections = []
     _sock = None
@@ -83,24 +86,27 @@ class Server:
                 return
 
     def DatabaseHandler(self):
-        # TODO make this sql part
         while self._running:
             item = self._queue.get()
+            print(item)
             if item is not None:
                 name = item[0]
                 detectors = int(item[1])
                 isWatered = int(item[2])
+                time = datetime.datetime.now()
 
-                lLevels = []
-                for x in range(detectors):
-                    lLevels.append([])
-                    lLevels[x].append(item[3 + x])  # premoisture
-                    lLevels[x].append(item[3 * detectors + x])  # postmoisture
+                # lLevels = []
+                # for x in range(detectors):
+                #     lLevels.append([])
+                #     lLevels[x].append(item[3 + x])  # premoisture
+                #     lLevels[x].append(item[3 * detectors + x])  # postmoisture
+
+                SplashFunctions.InsertPlant(self._db, name, detectors, time)
                 for xid in range(detectors):
                     premoist = int(item[3 + xid])
-                    postmoist = int(item[3 * detectors + xid])
-                    self.InsertMoisture(name, xid, isWatered, premoist,
-                                        postmoist, datetime.datetime.now())
+                    postmoist = int(item[3 + detectors + xid])
+                    SplashFunctions.InsertMoisture(
+                        self._db, name, xid, time, isWatered, premoist, postmoist)
 
     def Console(self):
         while self._running:
@@ -108,115 +114,11 @@ class Server:
             if con == "exit":
                 self._running = False
 
-    def InsertMoisture(self, name, detectorId, isWatered, preMoistureLevel,
-                       postMoistureLevel, time):
-        conn = None
-        try:
-            conn = sqlite3.connect(self._db)
-            c = conn.cursor()
-            print("Connected to database")
-
-            # Check if the table exists
-            c.execute('''SELECT count(name) FROM sqlite_master 
-                WHERE type='table' AND name='Moistures';''')
-            if c.fetchone()[0] == 0:
-                sql_create_table = '''CREATE TABLE Moistures (
-                                        name TEXT NOT NULL,
-                                        detectorId INTEGER NOT NULL,
-                                        time timestamp NOT NULL,
-                                        wasWatered INTEGER NOT NULL,
-                                        preMoistureLevel INTEGER NOT NULL,
-                                        postMoistureLevel INTEGER NOT NULL,                                    
-                                        PRIMARY KEY("name", "detectorId", "time")
-                                        );
-                                        '''
-                c.execute(sql_create_table)
-
-            # TODO Remove this later, its only here so I can get moving forward faster.
-            # Check if the table exists
-            c.execute('''SELECT count(name) FROM sqlite_master 
-                WHERE type='table' AND name='Plants';''')
-            if c.fetchone()[0] == 0:
-                sql_create_table = '''CREATE TABLE Plants (
-                                            name TEXT NOT NULL PRIMARY KEY,
-                                            setupDate timestamp
-                                            );
-                                            '''
-                c.execute(sql_create_table)
-            # Check if specific plant exists in plants table.
-            sql_check_plant = '''SELECT name FROM Plants WHERE name=?'''
-            c.execute(sql_check_plant, (name, ))
-            if (len(c.fetchall()) == 0):
-                self.InsertPlant(name, time)
-
-            # Insert a moisture level
-            sql_insert_moisture = '''INSERT INTO 'Moistures'
-                ('name', 'detectorId', 'wasWatered', 'preMoistureLevel', 'postMoistureLevel', 'time')
-                VALUES (?, ?, ?, ?, ?, ?, ?)'''
-            data = (name, detectorId, isWatered, preMoistureLevel,
-                    postMoistureLevel, time)
-            c.execute(sql_insert_moisture, data)
-            conn.commit()
-            print("Moisture level inserted", time)
-
-            c.close()
-
-        except Error as e:
-            print(e)
-        finally:
-            if conn:
-                conn.close()
-
-    def InsertPlant(self, name, joiningDate):
-        try:
-            conn = sqlite3.connect(self._db)
-            c = conn.cursor()
-            print("Connected to SQLite")
-
-            # Check if the table exists
-            c.execute('''SELECT count(name) FROM sqlite_master 
-                WHERE type='table' AND name='Plants';''')
-            if c.fetchone()[0] == 0:
-                sql_create_table = '''CREATE TABLE Plants (
-                                            name TEXT NOT NULL PRIMARY KEY,
-                                            setupDate timestamp
-                                            );
-                                            '''
-                c.execute(sql_create_table)
-
-            # Insert a plant
-            sql_insert_plant = """INSERT INTO 'Plants'
-                            ('name', 'setupDate') 
-                            VALUES (?, ?);"""
-
-            data = (name, joiningDate)
-            c.execute(sql_insert_plant, data)
-            conn.commit()
-            print("Plant added successfully \n")
-
-            # # get developer detail
-            # sql_select_plant = """SELECT name, joinDate from Plants"""
-            # c.execute(sql_select_plant)
-            # records = c.fetchall()
-
-            # for row in records:
-            #     plant = row[0]
-            #     joinDate = row[1]
-            #     print(plant, "added on", joinDate)
-
-            c.close()
-
-        except sqlite3.Error as error:
-            print("Error while working with SQLite", error)
-        finally:
-            if (conn):
-                conn.close()
-                print("sqlite connection is closed")
-
 
 if __name__ == "__main__":
     try:
         server = Server()
         server.Run()
+
     except (KeyboardInterrupt, SystemExit):
         os._exit(0)
