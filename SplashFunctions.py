@@ -4,10 +4,12 @@ from sqlite3 import Error
 
 
 def InsertPlant(db, name, detectors, time):
+    conn = None
     try:
         conn = sqlite3.connect(db)
         c = conn.cursor()
-        print("Connected to SQLite")
+        print("Connected to database")
+        print("Inserting plant")
 
         # Check if the table exists build if it doesn't
         CheckForPlantTable(c)
@@ -15,8 +17,8 @@ def InsertPlant(db, name, detectors, time):
             return
 
         # Insert a plant
-        sql_insert_plant = """INSERT INTO 'Plants'
-                            ('name', 'detectors', 'setupDate')
+        sql_insert_plant = """INSERT INTO Plants
+                            (name, detectors, setupDate)
                             VALUES (?, ?, ?);"""
 
         data = (name, detectors, time)
@@ -36,11 +38,10 @@ def InsertPlant(db, name, detectors, time):
 
         c.close()
     except sqlite3.Error as error:
-        print("Error while working with SQLite", error)
+        print("Error ", error)
     finally:
         if (conn):
             conn.close()
-            print("sqlite connection is closed")
 
 
 def CheckForPlantTable(c):
@@ -56,28 +57,77 @@ def CheckForPlantTable(c):
         c.execute(sql_create_table)
 
 
-def CheckIfPlantExists(c, name):
-    c.execute("""SELECT count(name) FROM Plants WHERE ?""", (name,))
-    if c.fetchone()[0] == 0:
-        return False
-    return True
-
-
-def InsertMoisture(db, name, detectorId, time, isWatered, preMoistureLevel,
-                   postMoistureLevel):
+def SelectAllPlants(db):
     conn = None
     try:
         conn = sqlite3.connect(db)
         c = conn.cursor()
         print("Connected to database")
+        print("Select all from Plants")
+
+        CheckForPlantTable(c)
+
+        sql_select_all = '''SELECT * FROM Plants;'''
+        c.execute(sql_select_all)
+
+        # print(list(c.fetchall()))
+
+        return list(c.fetchall())
+
+        c.close()
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def CheckIfPlantExists(c, name):
+    c.execute("""SELECT count(name) FROM Plants WHERE name=?""", (name,))
+    if c.fetchone()[0] == 0:
+        return False
+    return True
+
+
+def SelectAllMoistures(db):
+    conn = None
+    try:
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+        print("Connected to database")
+        print("Select all from Moisture")
+
+        CheckForMoistureTable(c)
+
+        sql_select_all = '''SELECT * FROM Moistures;'''
+        c.execute(sql_select_all)
+
+        # print(list(c.fetchall()))
+
+        return list(c.fetchall())
+
+        c.close()
+    except Error as e:
+        print(e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def InsertMoisture(db, name, detectorId, time, isWatered, preMoistureLevel, postMoistureLevel):
+    conn = None
+    try:
+        conn = sqlite3.connect(db)
+        c = conn.cursor()
+        print("Connected to database")
+        print("Inserting Moisture")
 
         # Check if the table exists
         CheckForMoistureTable(c)
 
         # Insert a moisture level
-        sql_insert_moisture = '''INSERT INTO 'Moistures'
-                ('name', 'detectorId', 'time', 'wasWatered', 'preMoistureLevel', 'postMoistureLevel')
-                VALUES (?, ?, ?, ?, ?, ?, ?)'''
+        sql_insert_moisture = '''INSERT INTO Moistures(name, detectorId, time, wasWatered, preMoistureLevel, postMoistureLevel)
+                VALUES (?, ?, ?, ?, ?, ?)'''
         data = (name, detectorId, time, isWatered,
                 preMoistureLevel, postMoistureLevel)
         c.execute(sql_insert_moisture, data)
@@ -87,7 +137,7 @@ def InsertMoisture(db, name, detectorId, time, isWatered, preMoistureLevel,
         c.close()
 
     except Error as e:
-        print(e)
+        print("Error", e)
     finally:
         if conn:
             conn.close()
