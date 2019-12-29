@@ -1,19 +1,27 @@
 <?php
 	function GetAllPlants()
 	{
-		$db = new SQLite3('../splash.db');
+		$db = new SQLite3("../Splash.db");
 		
-		$plants = $db->query('SELECT name FROM Plants');
-		while ($row = $plants->fetchArray()) {
-			echo $row['name'];
-		}
+		$plants = $db->query("SELECT name, detectors FROM Plants");
+		// while ($row = $plants->fetchArray()) {
+		// 	echo $row['name'];
+		// 	echo $row['detectors'];
+		// }
 		
-		return json_encode(42);
+		return $plants;
 	}
 
 	function GetAllMoistureLevels($name, $detec)
 	{
+		$db = new SQLite3("../Splash.db");
 		
+		$moistures = $db->query("SELECT * FROM Moistures");
+		// AND detectorId=$detec
+		
+		// var_dump($moistures);
+		
+		return $moistures;
 	}
 	
 	function GetCurrPrevMoistureLevels($name, $detec)

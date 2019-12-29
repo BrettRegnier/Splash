@@ -1,39 +1,57 @@
 <?php
+include_once("sql.php");
 
-$name = 'Hugh';
-$id = 0;
-
-$plants = "";
-$detectors = "";
-
-// TODO query database and adjust variables    
-// for ($i = 0; $i < 2; $i++) {
-// 	$id = $i;
-	
-// 	ob_start();
-// 	include("plant.php");
-// 	$v = ob_get_clean(); // get the ob of plant
-// 	array_push($plants,  $v);
-
-// 	$name = "jorg";	
-// }
-
-
-
-// TODO for loop for each plant in the db
-// this is a test for if there two detectors
-for ($i = 0; $i < 2; $i++) 
+function BuildPlants()
 {
-	$id = $i;
-	ob_start();
-	include("detector.php");
-	$detectors = $detectors . ob_get_clean();
+	$name = "";
+	$id = 0;
+
+	$plants = "";
+	$detectors = "";
+
+	$sql = GetAllPlants();
+
+	while ($row = $sql->fetchArray()) {
+		$name = $row['name'];
+		$dcount = $row['detectors'];
+
+		$detectors = "";
+
+		for ($i = 0; $i < $dcount; $i++) {
+			$id = $i;
+			ob_start();
+			include("detector.php");
+			$detectors = $detectors . ob_get_clean();
+		}
+
+		ob_start();
+		include("plant.php");
+		$plants = $plants . ob_get_clean();
+	}
+
+	return $plants;
 }
 
-ob_start();
-include("plant.php");
-$plants = $plants . ob_get_clean();
+function GetMoistures()
+{
+	$name = $_REQUEST["name"];
+	$detector = $_REQUEST["detector"];
+	$moistures = "";
 
+	$sql = GetAllMoistureLevels($name, $detector);
 
-echo $plants;
-?>
+	while ($row = $sql->fetchArray()) 
+	{
+	}
+
+	return json_encode(GetAllMoistureLevels($name, $detector));
+}
+
+// Types: 0 = plant, 1 = moistures
+
+$type = $_REQUEST["t"];
+
+if ($type == 0)
+	echo BuildPlants();
+else if ($type == 1)
+	echo GetMoistures();

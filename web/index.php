@@ -39,7 +39,7 @@
 </head>
 
 <body>
-	<nav class="nav">
+	<!-- <nav class="nav">
 		<div class="nav__logo">
 			<div class="nav__content">
 				<a href="index.html" class="nav__link">
@@ -52,16 +52,16 @@
 			<div class="nav__content">
 				<a class="nav__link nav__link--active" href="#">Dunnoyet</a>
 			</div>
-		</div>
+		</div> -->
 		<!-- https://www.w3schools.com/howto/howto_css_menu_icon.asp -->
-		<a href="javascript:void(0);" class="nav__display" onclick="DisplayNavBurger()">
+		<!-- <a href="javascript:void(0);" class="nav__display" onclick="DisplayNavBurger()">
 			<div class="nav__burger" onclick="ToggleBurger(this)">
 				<div class="nav__bar nav__bar1"></div>
 				<div class="nav__bar nav__bar2"></div>
 				<div class="nav__bar nav__bar3"></div>
 			</div>
 		</a>
-	</nav>
+	</nav> -->
 	<section class="container" id="content">
 		
 	</section>

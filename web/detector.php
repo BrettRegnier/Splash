@@ -1,6 +1,6 @@
-<div class="plant__detector" id='<?php echo $name . $id; ?>'>
+<div class="plant__detector" id='<?php echo $name . "_" . $id; ?>'>
 	<div class="plant__meter">
-		<canvas id="meter"></canvas>
+		<canvas class="meter__canvas"></canvas>
 		<div class="meter__legend">
 			<div class="legend__item">
 				<span class="legend__item--current"></span>
