@@ -85,8 +85,8 @@ def SelectAllPlants(db):
 def CheckIfPlantExists(c, name):
     c.execute("""SELECT count(name) FROM Plants WHERE name=?""", (name,))
     if c.fetchone()[0] == 0:
-        return False
-    return True
+        return True
+    return False
 
 
 def SelectAllMoistures(db):
