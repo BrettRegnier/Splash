@@ -36,9 +36,9 @@ footer {
 	margin: 0;
 }
 
-.plant__info {
+.plant__detector, .plant__info {
 	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
+	grid-template-columns: 1fr 1fr;
 	column-gap: 15px;
 	font-size: 1.2em;
 }
@@ -61,3 +61,6 @@ footer {
 	background-color: #2040FF;
 }
 
+.plant__meter {
+	/* height: 500px; */
+}

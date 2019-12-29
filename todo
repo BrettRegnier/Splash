@@ -1,7 +1,3 @@
-
-Server:
-    -- SQL file that handles everything instead of in the server code.
-        -AKA object orientated code instead of spaghet
     
 Client:
         HARD MAYBEs
@@ -37,6 +33,7 @@ Web:
     
     -- Get the js to run after everything is loaded.
 
+    -- Add in loading screen so that people know that it is querying?
 
 Circuit: 
     Switch to using a mosfets and capacitor sensors
