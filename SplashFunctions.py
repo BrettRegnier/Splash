@@ -13,7 +13,7 @@ def InsertPlant(db, name, detectors, time):
 
         # Check if the table exists build if it doesn't
         CheckForPlantTable(c)
-        if CheckIfPlantExists(c, name) == False:
+        if CheckIfPlantExists(c, name):
             return
 
         # Insert a plant
@@ -85,8 +85,8 @@ def SelectAllPlants(db):
 def CheckIfPlantExists(c, name):
     c.execute("""SELECT count(name) FROM Plants WHERE name=?""", (name,))
     if c.fetchone()[0] == 0:
-        return True
-    return False
+        return False
+    return True
 
 
 def SelectAllMoistures(db):
