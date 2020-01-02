@@ -12,15 +12,10 @@
 		return $plants;
 	}
 
-	function GetAllMoistureLevels($name, $detec)
+	function GetAllMoistureLevels($name, $detector)
 	{
 		$db = new SQLite3("../Splash.db");
-		
-		$moistures = $db->query("SELECT * FROM Moistures");
-		// AND detectorId=$detec
-		
-		// var_dump($moistures);
-		
+		$moistures = $db->query("SELECT time, wasWatered, preMoistureLevel, postMoistureLevel FROM Moistures WHERE name='$name' AND detectorId=$detector");
 		return $moistures;
 	}
 	

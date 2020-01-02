@@ -13,6 +13,6 @@
 		</div>
 	</div>
 	<div class="plant__graph">
-		<p>nothing yet</p>
+		<canvas class="graph__canvas"></canvas>
 	</div>
 </div>

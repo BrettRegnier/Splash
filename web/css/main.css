@@ -38,7 +38,7 @@ footer {
 
 .plant__detector, .plant__info {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: 2fr 3fr;
 	column-gap: 15px;
 	font-size: 1.2em;
 }

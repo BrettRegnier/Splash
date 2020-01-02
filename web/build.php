@@ -36,15 +36,26 @@ function GetMoistures()
 {
 	$name = $_REQUEST["name"];
 	$detector = $_REQUEST["detector"];
-	$moistures = "";
+	$moistures = array();
 
 	$sql = GetAllMoistureLevels($name, $detector);
-
-	while ($row = $sql->fetchArray()) 
+	$test = "";
+	// TODO i dunno figure this out somehow
+	while ($row = $sql->fetchArray(2)) 
 	{
+		// var_dump($row);
+		// $leng = count($row);
+		// for ($i = 0; $i < $leng; $i++)
+		// {
+		// 	$moistures .= strval($row[$i]);
+		// }
+		// $moistures .= " ";
+		
+		$moistures[] = $row;
 	}
+	// var_dump($moistures);
 
-	return json_encode(GetAllMoistureLevels($name, $detector));
+	return json_encode($moistures);
 }
 
 // Types: 0 = plant, 1 = moistures

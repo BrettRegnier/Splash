@@ -66,6 +66,7 @@
 		
 	</section>
 
+	<script src="js/Chart.min.js" type="text/javascript"></script>
 	<script src="js/nav.js" type="text/javascript" defer="defer"></script>
 	<script src="js/plant.js" type="text/javascript"></script>
 </body>
