@@ -41,6 +41,7 @@ footer {
 	grid-template-columns: 2fr 3fr;
 	column-gap: 15px;
 	font-size: 1.2em;
+	margin-bottom: 25px;
 }
 
 .meter__legend {
@@ -62,5 +63,5 @@ footer {
 }
 
 .plant__meter {
-	/* height: 500px; */
+	height: 400px;
 }

@@ -1,23 +1,31 @@
 class Meter 
 {
-	constructor(canvas, cw, ch, prev, curr)
+	constructor(canvas, prev, curr)
 	{
 		// this.Resize(cw, ch);
 		this._canvas = canvas;
 		this._previous = prev;
 		this._current = curr;
 
+		this.Resize();
 		this.Draw();
+	}
+	
+	Resize()
+	{
+		// Size canvas
+		this._canvas.width = this._canvas.parentElement.offsetWidth;
+		this._canvas.height = this._canvas.parentElement.offsetHeight;
 	}
 
 	Draw()
 	{
 		var ctx = this._canvas.getContext("2d");
-		var w = this._canvas.width / 2;
-		var h = this._canvas.height / 2;
+		var w = this._canvas.width/2;
+		var h = this._canvas.height/2;
 
 		// clear the canvas
-		ctx.clearRect(0, 0, w, h);
+		ctx.clearRect(0, 0, w*2, h*2);
 
 
 		// draw meter
@@ -35,13 +43,13 @@ class Meter
 
 		console.log(curr);
 		// max
-		this.DrawMeter(ctx, w, h, 50, 0, 2 * Math.PI, "#202020", 20);
+		this.DrawMeter(ctx, w, h, 120, 0, 2 * Math.PI, "#202020", 40);
 
 		// previous
-		this.DrawMeter(ctx, w, h, 46, 1.5 * Math.PI, (prev * Math.PI) - (0.5 * Math.PI), "#79B8E5", 6);
+		this.DrawMeter(ctx, w, h, 114, 1.5 * Math.PI, (prev * Math.PI) - (0.5 * Math.PI), "#79B8E5", 20);
 
 		// current
-		this.DrawMeter(ctx, w, h, 53, 1.5 * Math.PI, (curr * Math.PI) - (0.5 * Math.PI), "#004D84", 12);
+		this.DrawMeter(ctx, w, h, 126, 1.5 * Math.PI, (curr * Math.PI) - (0.5 * Math.PI), "#004D84", 24);
 	}
 
 	DrawMeter(ctx, w, h, r, start, end, color, lw)
@@ -68,8 +76,14 @@ class Meter
 
 class LineGraph
 {
-	constructor(canvas, w, h, pre, post, dates)
+	constructor(canvas, pre, post, dates)
 	{
+		// Size canvas
+		// canvas.style.width ='100%';
+		// canvas.style.height='100%';
+		// canvas.width  = canvas.offsetWidth;
+		// canvas.height = canvas.offsetHeight;
+
 		console.log(dates);
 		var x = canvas.getContext("2d");
 		var d = new Date();
@@ -89,16 +103,16 @@ class LineGraph
 					backgroundColor: "rgba(200, 100, 100)",
 					borderColor: "rgba(72, 70, 192, 1)",
 					fill: false,
-					data: post,					
+					data: post,
 				}
 				]
 			}
 		}
-		
+
 		var chart = new Chart(canvas, this.config);
 
 		var ctx = canvas.getContext("2d");
-		
+
 	}
 
 	Resize()// todo
@@ -117,7 +131,8 @@ class LineGraph
 	}
 }
 
-moistures = null;
+meters = [];
+graphs = [];
 
 window.onload = function ()
 {
@@ -160,7 +175,7 @@ function DrawMeters()
 			var detector = j;
 
 			// Get the canvases
-			var meterCanvas = detectors[j].getElementsByClassName("meter__canvas")[0]
+			var meterCanvas = detectors[j].getElementsByClassName("meter__canvas")[0];
 			var graphCanvas = detectors[j].getElementsByClassName("graph__canvas")[0];
 
 			cmd = "build.php?t=1&name=" + name + "&detector=" + detector;
@@ -179,7 +194,7 @@ function DrawMeters()
 				previousDate = null;
 				current = moistures[0];
 				previous = null;
-				
+
 				dates = [moistures[0][0].toLocaleDateString()];
 				premoistures = [moistures[0][2]];
 				postmoistures = [moistures[0][3]];
@@ -195,7 +210,7 @@ function DrawMeters()
 						currentDate = tmp;
 						current = moistures[i];
 					}
-					
+
 					dates.push(moistures[i][0].toLocaleString());
 					premoistures.push(moistures[i][2]);
 					postmoistures.push(moistures[i][3]);
@@ -207,8 +222,8 @@ function DrawMeters()
 				// console.log(premoistures);
 				// console.log(postmoistures);
 
-				var meter = new Meter(meterCanvas, 100, 100, previous[3], current[3]);
-				var graph = new LineGraph(graphCanvas, 500, 500, premoistures, postmoistures, dates);
+				var meter = new Meter(meterCanvas, previous[3], current[3]);
+				var graph = new LineGraph(graphCanvas, premoistures, postmoistures, dates);
 			}
 			// sleep(100000);
 

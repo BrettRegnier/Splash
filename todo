@@ -36,6 +36,8 @@ Web:
         - day, week, month, choose between date periods
 
     -- Add in loading screen so that people know that it is querying? (sort of done)
+    
+    -- Add in resizing for both?
 
 Circuit: 
     -- Switch to using a mosfets and capacitor sensors
