@@ -1,5 +1,5 @@
 # Splash - Plant Watering Project
-Plant watering app that is created with Arduino, with Python and Web.
+Plant watering app that is created with Arduino, Python and Web.
 
 ## Table of Contents
 * [Introduction](#Introduction)
