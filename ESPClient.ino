@@ -61,25 +61,30 @@ class CapacitiveSensor
 
 		int Read()
 		{
-			return analogRead(_analogPin);
+			int val = analogRead(_analogPin);
+			Serial.println(val);
+			return val;
 		}
 
-		float ReadPercent()
+		int ReadPercent()
 		{
-			float val = analogRead(_analogPin);
-			if (val > _max)
-				val = max;
-			else if (val < _min)
-				val = min;
+			float val = Read();
 			
 			// normalize
-			val -= max;
+			if (val > _max)
+				val = _max;
+			else if (val < _min)
+				val = _min;
+			
+			val -= _max;
 			if (val < 0)
 				val *= -1;
 			
-			val /= (max - min)
+			val /= (_max - _min);
+			val *= 100;
+			return val;
 		}
-}
+};
 
 class Component
 {
@@ -136,19 +141,17 @@ public:
 const char *_ssid = "";
 const char *_password = "";
 
-const char *_host = "192.168.0.24";
+const char *_host = "192.168.0.36";
 const uint16_t _port = 8777;
 
 const char *_name = "Hugh";
 
 const int DETECTORS = 1;
-WaterDetector _resevoirDetector(5);
-WaterDetector _detectors[DETECTORS] = {WaterDetector(13, 0xA0)};
-Component _pumpRelay(2);
-Component _powerRelay(3);
+CapacitiveSensor _detectors[DETECTORS] = {CapacitiveSensor(A0, 723.0, 774.0)};
+Component _pumpRelay(14); //d5 on the esp
 
-uint8_t _detectType = 0;		// 0 is digital, 1 is analog
-uint8_t _analogThreshold = 175; // The amount of moisure that should be in the soil
+uint8_t _detectType = 1;		// 0 is digital, 1 is analog
+uint8_t _analogThreshold = 30;  // The percent of moisure that should be in the soil
 uint8_t _morningThreshold = 7;  // time to check levels in the morning
 uint8_t _eveningThreshold = 20; // time to check the levels in the evening
 
@@ -164,7 +167,10 @@ void setup()
 
 	ConnectToWifi();
 	InitTime();
-	InitComponents();
+	_pumpRelay.Begin();
+	for (int i = 0; i < DETECTORS; i++)
+		_detectors[i].Begin();
+	// _resevoirDetector.Begin(); // TODO add this back in later
 }
 
 void loop()
@@ -174,7 +180,7 @@ void loop()
 	struct tm *p_tm = localtime(&now);
 	uint8_t hr = p_tm->tm_hour;
 
-	// PrintTime();
+	PrintTime();
 	if (hr > _morningThreshold && hr < _eveningThreshold)
 	{
 		// Serial.println("Within hours");
@@ -182,23 +188,20 @@ void loop()
 		uint32_t preMoistures[DETECTORS];
 		uint32_t postMoistures[DETECTORS];
 
-		// init moistures stride-1 access
-
+		// init moistures
 		for (int i = 0; i < DETECTORS; i++)
 			preMoistures[i] = 0;
 		for (int i = 0; i < DETECTORS; i++)
 			postMoistures[i] = 0;
 
-		_powerRelay.TurnOn(); // turn on power to the peripherals
-		delay(1000);		  // allow for the sensors to start detecting water
-
 		// read the water levels before watering
-		ReadWaterLevels(preMoistures);
+		ReadWaterPercentLevels(preMoistures);
+		ReadWaterLevels(postMoistures); // TODO REMOVE
 
 		// time should be within a certain time period. 7am < time <10pm
-		if (_detectType == 0) // detect using digital
-			toWater = WateringDigital();
-		else if (_detectType == 1)
+		// if (_detectType == 0) // detect using digital
+		// 	toWater = WateringDigital();
+		if (_detectType == 1)
 			toWater = WateringAnalog(preMoistures);
 
 		if (toWater)
@@ -207,20 +210,28 @@ void loop()
 			uint16_t duration = millis() + 5000; // should pump about 250mL
 
 			_pumpRelay.TurnOn();
-			delay(100); // this for some reason allows for the sensors to detect correctly...?
+
+
+			/*****/
+			// this needs to be replaced with a capacitive sensor
+			// on the outside of the resevoir, but first need to 
+			// make sure things work.
+			// delay(100); // this for some reason allows for the sensors to detect correctly...?
 			while (millis() < duration)
 			{
-				if (!_resevoirDetector.Detect())
-				{
-					_pumpRelay.TurnOff();
-					// TODO add in LED blinking variable here...
-					break; // can't water, break out of loop
-				}
+				// if (!_resevoirDetector.Detect())
+				// {
+				// 	_pumpRelay.TurnOff();
+				// 	// TODO add in LED blinking variable here...
+				// 	break; // can't water, break out of loop
+				// }
+				delay(100);
 			}
+			/*****/
+
 			_pumpRelay.TurnOff();
-			ReadWaterLevels(postMoistures);
+			// ReadWaterLevels(postMoistures); // TODO uncomment
 		}
-		_powerRelay.TurnOff(); // turn off power to peripherals
 
 		// Use WiFiClient class to create TCP connections
 		Serial.println("Connect to host");
@@ -244,9 +255,9 @@ void loop()
 		if (client.connected())
 		{
 			// TODO remove this after testing
-			preMoistures[0] = 200;
+			// preMoistures[0] = 200;
 			toWater = 1;
-			postMoistures[0] = 100;
+			// postMoistures[0] = 100;
 
 			int sizeName = 0;
 			while (_name[sizeName] != '\0')
@@ -364,6 +375,7 @@ void loop()
 			msg[idx] = '\0'; // add to end to end char array.
 
 			Serial.println(msg);
+			Serial.println("Sending to host");
 
 			// Write the message to the server
 			client.write(msg);
@@ -387,7 +399,7 @@ void loop()
 		// if the server is still available, get data
 		if (available)
 		{
-			Serial.println("receiving from remote server");
+			Serial.println("receiving from server");
 			while (client.available())
 			{
 				char ch = static_cast<char>(client.read());
@@ -399,7 +411,7 @@ void loop()
 	}
 	// sleep for n time
 	// delay(_sleepTime);
-	delay(6000);
+	delay(1000);
 }
 
 void ConnectToWifi()
@@ -430,15 +442,6 @@ void InitTime()
 	}
 }
 
-void InitComponents()
-{
-	_pumpRelay.Begin();
-	_powerRelay.Begin();
-	for (int i = 0; i < DETECTORS; i++)
-		_detectors[i].Begin();
-	_resevoirDetector.Begin();
-}
-
 void PrintConnection(const char *host, uint16_t port)
 {
 	Serial.print("connecting to ");
@@ -467,6 +470,30 @@ void PrintTime()
 }
 
 // Reads the current water levels and averages the values
+void ReadWaterPercentLevels(uint32_t *moistures)
+{
+	// init reads array
+	uint16_t reads[DETECTORS];
+	for (int i = 0; i < DETECTORS; i++)
+		reads[i] = 0;
+
+	uint32_t readEnd = millis() + 2000;
+	while (millis() < readEnd)
+	{
+		for (int i = 0; i < DETECTORS; i++)
+		{
+			moistures[i] += _detectors[i].ReadPercent();
+			reads[i]++;
+		}
+		// for some reason letting this while loop caused a stack overflow.
+		delay(100);
+	}
+
+	for (int i = 0; i < DETECTORS; i++)
+		moistures[i] = moistures[i] / reads[i];
+}
+
+// Reads the current water levels and averages the values
 void ReadWaterLevels(uint32_t *moistures)
 {
 	// init reads array
@@ -490,14 +517,14 @@ void ReadWaterLevels(uint32_t *moistures)
 		moistures[i] = moistures[i] / reads[i];
 }
 
-uint8_t WateringDigital()
-{
-	bool needsWatering = true;
-	for (int i = 0; i < DETECTORS; i++)
-		needsWatering = needsWatering && !_detectors[i].Detect();
+// uint8_t WateringDigital()
+// {
+// 	bool needsWatering = true;
+// 	for (int i = 0; i < DETECTORS; i++)
+// 		needsWatering = needsWatering && !_detectors[i].Detect();
 
-	return needsWatering;
-}
+// 	return needsWatering;
+// }
 
 uint8_t WateringAnalog(uint32_t *moistures)
 {

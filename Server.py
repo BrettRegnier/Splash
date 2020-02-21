@@ -88,7 +88,7 @@ class Server:
     def DatabaseHandler(self):
         while self._running:
             item = self._queue.get()
-            print(item)
+            print("Received", item)
             if item is not None:
                 name = item[0]
                 detectors = int(item[1])
@@ -101,12 +101,12 @@ class Server:
                 #     lLevels[x].append(item[3 + x])  # premoisture
                 #     lLevels[x].append(item[3 * detectors + x])  # postmoisture
 
-                SplashFunctions.InsertPlant(self._db, name, detectors, time)
-                for xid in range(detectors):
-                    premoist = int(item[3 + xid])
-                    postmoist = int(item[3 + detectors + xid])
-                    SplashFunctions.InsertMoisture(
-                        self._db, name, xid, time, isWatered, premoist, postmoist)
+                # SplashFunctions.InsertPlant(self._db, name, detectors, time)
+                # for xid in range(detectors):
+                #     premoist = int(item[3 + xid])
+                #     postmoist = int(item[3 + detectors + xid])
+                #     SplashFunctions.InsertMoisture(
+                #         self._db, name, xid, time, isWatered, premoist, postmoist)
 
     def Console(self):
         while self._running:
