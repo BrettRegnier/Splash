@@ -38,6 +38,49 @@ public:
 	}
 };
 
+class CapacitiveSensor
+{
+	private:
+		uint8_t _analogPin;
+		float _min;
+		float _max;
+		bool _state;
+	
+	public:
+		CapacitiveSensor(uint8_t analogPin, float min, float max)
+		{
+			_analogPin = analogPin;
+			_min = min;
+			_max = max;
+		}
+
+		void Begin()
+		{
+			_state = false;
+		}
+
+		int Read()
+		{
+			return analogRead(_analogPin);
+		}
+
+		float ReadPercent()
+		{
+			float val = analogRead(_analogPin);
+			if (val > _max)
+				val = max;
+			else if (val < _min)
+				val = min;
+			
+			// normalize
+			val -= max;
+			if (val < 0)
+				val *= -1;
+			
+			val /= (max - min)
+		}
+}
+
 class Component
 {
 private:
