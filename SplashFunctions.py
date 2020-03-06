@@ -158,3 +158,8 @@ def CheckForMoistureTable(c):
                                     );
                                     '''
         c.execute(sql_create_table)
+
+def SaveEntryToFile(entry):
+    f = open("readings.txt", "w+")
+    f.write(entry)
+    f.close()

@@ -94,12 +94,17 @@ class Server:
                 detectors = int(item[1])
                 isWatered = int(item[2])
                 time = datetime.datetime.now()
+                
+                lLevels = []
+                for x in range(detectors):
+                    lLevels.append([])
+                    lLevels[x].append(item[3 + x])  # premoisture
+                    lLevels[x].append(item[3 * detectors + x])  # postmoisture
 
-                # lLevels = []
-                # for x in range(detectors):
-                #     lLevels.append([])
-                #     lLevels[x].append(item[3 + x])  # premoisture
-                #     lLevels[x].append(item[3 * detectors + x])  # postmoisture
+                # TODO remove
+                s = name + " " + str(detectors) + " " + str(isWatered) + " " + str(item[3]) + " " + str(item[4]) + " " + str(time)
+                print(s)
+                SplashFunctions.SaveEntryToFile(s)
 
                 # SplashFunctions.InsertPlant(self._db, name, detectors, time)
                 # for xid in range(detectors):

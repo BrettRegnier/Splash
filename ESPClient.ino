@@ -141,7 +141,7 @@ public:
 const char *_ssid = "";
 const char *_password = "";
 
-const char *_host = "192.168.0.36";
+const char *_host = "192.168.0.39";
 const uint16_t _port = 8777;
 
 const char *_name = "Hugh";
@@ -155,7 +155,8 @@ uint8_t _analogThreshold = 30;  // The percent of moisure that should be in the 
 uint8_t _morningThreshold = 7;  // time to check levels in the morning
 uint8_t _eveningThreshold = 20; // time to check the levels in the evening
 
-uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
+// uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
+uint32_t _sleepTime = 300000; // This will change based on how often to check the plant
 
 int8_t _tz = -7;
 
@@ -181,7 +182,8 @@ void loop()
 	uint8_t hr = p_tm->tm_hour;
 
 	PrintTime();
-	if (hr > _morningThreshold && hr < _eveningThreshold)
+	// if (hr > _morningThreshold && hr < _eveningThreshold) # TODO add this back in
+	if (true)
 	{
 		// Serial.println("Within hours");
 		uint8_t toWater = 0; // 0 doesn't get watered | 1 gets watered.
@@ -410,8 +412,8 @@ void loop()
 		client.stop();
 	}
 	// sleep for n time
-	// delay(_sleepTime);
-	delay(1000);
+	delay(_sleepTime);
+	// delay(1000);
 }
 
 void ConnectToWifi()
