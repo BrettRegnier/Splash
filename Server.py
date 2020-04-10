@@ -19,6 +19,7 @@ class Server:
 
     def __init__(self):
         self._sock = socket.socket()
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._sock.bind(("0.0.0.0", 8777))
         self._sock.listen(1)
 

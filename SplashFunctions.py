@@ -161,5 +161,5 @@ def CheckForMoistureTable(c):
 
 def SaveEntryToFile(entry):
     f = open("readings.txt", "w+")
-    f.write(entry)
+    f.write(entry + "\n")
     f.close()
