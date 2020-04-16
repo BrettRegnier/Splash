@@ -18,6 +18,11 @@ public:
         _min = 500.f;
         _max = 700.f;
     }
+    
+    ~CapacitiveSensor()
+    {
+        
+    }
 
     void Begin()
     {
@@ -63,6 +68,11 @@ public:
     Component(uint8_t pin)
     {
         _pin = pin;
+    }
+    
+    ~Component()
+    {
+        
     }
 
     void Begin()
@@ -128,6 +138,11 @@ public:
         _watering_threshold = watering_threshold;
         _water_amount = water_amount;
     }
+    
+    ~Plant()
+    {
+        
+    }
 
     void Begin()
     {
@@ -157,7 +172,6 @@ public:
             // if the plant doesn't need to be watered then they are equal
             postwatering_moistures = prewatering_moistures;
         }
-        
     }
 
     std::vector<uint32_t> ReadWaterLevels()
@@ -235,8 +249,12 @@ void loop()
     // if (hr > _morning_threshold && hr < _evening_threshold)
     if (true)
     {
-
+        // do the watering checks of all of the plants
+        
+        // Send to the server
     }
+    
+    // sleep for a certain amount of time
 }
 
 void ConnectToWifi()
