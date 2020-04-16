@@ -147,7 +147,7 @@ const uint16_t _port = 8777;
 const char *_name = "Hugh";
 
 const int DETECTORS = 1;
-CapacitiveSensor _detectors[DETECTORS] = {CapacitiveSensor(A0, 723.0, 774.0)};
+CapacitiveSensor _detectors[DETECTORS] = {CapacitiveSensor(0xA0, 723.0, 774.0)};
 Component _pumpRelay(14); //d5 on the esp
 
 uint8_t _detectType = 1;		// 0 is digital, 1 is analog
