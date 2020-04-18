@@ -2,21 +2,16 @@ todo Standalone
 
     
 Client:
-        HARD MAYBEs
-    -- The code will need to change based on the clock speed of the esp module.
-    -- average water consumption
-
+    -- Register plants to a resevoir?
+        -- alternatively, the plant knows it resevoir pin
 
     -- Check water level of resevoir and report it.
         -add the current level of resevoir to the website in the water wheel and stats
         
-    -- Make class for a "plant" and have the values stored there so I can make it have multiple 
-        plants on one device.
-
     -- Add an LED to blink when the resevoir is out of water (not a priority)
-    -- Temperature monitor?   
     
-    -- Get the maximum analog amount and compress the values by the value to get a percentage to reduce useless calculations.
+    -- Temperature monitor?   
+    -- average water consumption
 
 Web:
     -- Features:
@@ -43,6 +38,11 @@ Circuit:
     -- Switch to using a mosfets and capacitor sensors
     -- Add multiplexer
 
+3D Model:
+    -- make a 3d model that can encase the prongs that go into the ground, the top should be able to be popped off so a replacement can happen as well, as wires to be added
+    -- make it modular like lego blocks with holes.
 
-Arctic TODO <--------------------
-    -- Make sure this code is arctic ready in the Readme
+Supplies:
+    -- Solenoids - https://www.sparkfun.com/products/10456
+    -- MOSFET - https://www.sparkfun.com/products/10213
+    -- MUX - https://www.sparkfun.com/products/299 
