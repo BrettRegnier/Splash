@@ -88,17 +88,40 @@ public:
     }
 };
 
+// To trick this thing you need to make the send pin the resistor outputting from a pin
+// one of the metal bars should be hooked into ground,
+// the recieve pin should then be another one of the rods
+// send pin, rod, and recieve pin should all be hooked into a single rail.
+// see diagram.
 class VoltageSensor
 {
 private:
-    bool _state;
+    CapacitiveSensor *_sensor;
     
 public:
-    VoltageSensor(uint8_t _send_pin, uint8_t _recieve_pin)
+    VoltageSensor(uint8_t send_pin, uint8_t recieve_pin)
     {
-
+        _sensor = new CapacitiveSensor(send_pin, recieve_pin);
+        _sensor->set_CS_AutocaL_Millis(0xFFFFFFFF);
     }
-}
+    
+    ~VoltageSensor()
+    {
+        delete _sensor;
+    }
+
+    bool Detect()
+    {
+        long v = _sensor->capacitiveSensor(20);
+        if (v > 15)
+            _sensor->reset_CS_AutoCal();
+
+        if (v > 0)
+            return true;
+
+        return false;
+    } 
+};
 
 class Component
 {
@@ -246,7 +269,7 @@ class Reservoir
 {
 private:
     Component *_pump;
-    CapacitiveWaterSensor *_sensor;
+    VoltageSensor *_sensor;
     uint8_t _selector_pin;
     AnalogMux &_mux;
 
@@ -255,9 +278,13 @@ private:
 
     int _min_percent;
 
+    //
+    // TODO change all of these settings to the VoltageSensor
+    //
+    //
+
 public:
-    Reservoir(uint8_t pump_pin, uint8_t analog_pin, uint8_t selector_pin, AnalogMux &mux, int min_percent, uint8_t led_pin = -1)
-        : _mux(mux)
+    Reservoir(uint8_t pump_pin, uint8_t send_pin, uint8_t recieve_pin, int min_percent, uint8_t led_pin = -1)
     {
         _pump = new Component(pump_pin);
         _sensor = new CapacitiveWaterSensor(analog_pin);
