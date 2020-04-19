@@ -1,27 +1,29 @@
 #include <ESP8266WiFi.h>
+#include <CapacitiveSensor.h>
 #include <time.h>
 #include <vector>
 #include <string>
 
 const int TIME_PER_MILLILITRE = 20;
 
-class CapacitiveSensor
+class CapacitiveWaterSensor
 {
 private:
-    AnalogMux &_mux;
+    uint8_t _analog_pin;
     float _min;
     float _max;
     int _read_time;
 
 public:
-    CapacitiveSensor(AnalogMux &mux) : _mux(mux)
+    CapacitiveWaterSensor(uint8_t analog_pin)
     {
+        _analog_pin = analog_pin;
         _min = 500.f;
         _max = 700.f;
         _read_time = 2000;
     }
 
-    int Read()
+    float Read()
     {
         uint32_t read_end;
         float values;
@@ -32,7 +34,7 @@ public:
         reads = 0.f;
         while (millis() < read_end)
         {
-            values += analogRead(_analogPin);
+            values += analogRead(_analog_pin);
             reads += 1.f;
             // delay(100); // TOOD do I need this?
         }
@@ -40,7 +42,7 @@ public:
         return values / reads;
     }
 
-    int ReadPercent()
+    float ReadPercent()
     {
         float val = Read();
 
@@ -65,24 +67,38 @@ public:
 class AnalogMux
 {
 private:
-    uint8_t _read_pin;
-    std::vector<uint8_t> _activate_pins;
+    std::vector<uint8_t> _selector_pins;
 
 public:
-    AnalogMux(uint8_t read_pin, std::vector<uint8_t> activate_pins)
+    AnalogMux(std::vector<uint8_t> selector_pins)
     {
-        _read_pin = read_pin;
-        _activate_pins = activate_pins;
+        _selector_pins = selector_pins;
     }
 
     // selector is an integer value between 0-max_selectors
-    float AnalogRead(uint8_t selector)
+    void Select(byte selector)
     {
-        // TODO finish this
-
-        return analogRead(_read_pin)
+        for (int i = 0; i < 3; i++)
+        {
+            if (selector & (1 << i))
+                digitalWrite(_selector_pins[i], HIGH);
+            else
+                digitalWrite(_selector_pins[i], HIGH);
+        }
     }
 };
+
+class VoltageSensor
+{
+private:
+    bool _state;
+    
+public:
+    VoltageSensor(uint8_t _send_pin, uint8_t _recieve_pin)
+    {
+
+    }
+}
 
 class Component
 {
@@ -136,25 +152,37 @@ class Plant
 {
 private:
     String _name;
-    std::vector<CapacitiveSensor *> _sensors;
-    Resevoir &_resevoir; // this is so that multiple plants can use the same resevoir
+    std::vector<CapacitiveWaterSensor *> _sensors;
+    std::vector<uint8_t> _sensor_selector_pins;
+    AnalogMux &_sensor_mux;
+    Reservoir &_reservoir; // this is so that multiple plants can use the same Reservoir
+    AnalogMux &_solenoid_mux;
+    uint8_t _solenoid_selector_pin;
     Component *_solenoid;
     int _watering_threshold;
     int _water_amount;
 
+    std::vector<float> _pre_watering_moistures;
+    std::vector<float> _post_watering_moistures;
+
 public:
-    Plant(String name, int num_sensors, uint8_t sensor_pins[], Resevoir &reservoir, int solenoid_pin, int watering_threshold, int water_amount)
-        : _resevoir(reservoir) // this is how to reference
+    Plant(String name, uint8_t analog_pin, std::vector<uint8_t> sensor_selector_pins, AnalogMux &sensor_mux, Reservoir &reservoir, int watering_threshold, int water_amount, int solenoid_pin, uint8_t solenoid_selector_pin, AnalogMux &solenoid_mux)
+        : _reservoir(reservoir), _sensor_mux(sensor_mux), _solenoid_mux(solenoid_mux) // this is how to reference
     {
         _name = name;
 
-        _sensors = std::vector<CapacitiveSensor *>(num_sensors);
-        for (int i = 0; i < num_sensors; i++)
-            _sensors[i] = new CapacitiveSensor(sensor_pins[i]);
+        _sensors = std::vector<CapacitiveWaterSensor *>();
+        _sensor_selector_pins = sensor_selector_pins;
+
+        for (int i = 0; i < _sensor_selector_pins.size(); i++)
+            _sensors.push_back(new CapacitiveWaterSensor(analog_pin));
         _solenoid = new Component(solenoid_pin);
 
         _watering_threshold = watering_threshold;
         _water_amount = water_amount;
+
+        _pre_watering_moistures = std::vector<float>(_sensor_selector_pins.size());
+        _post_watering_moistures = std::vector<float>(_sensor_selector_pins.size());
     }
 
     ~Plant()
@@ -164,31 +192,46 @@ public:
         delete _solenoid;
     }
 
+    void Manage()
+    {
+        _pre_watering_moistures = ReadWaterLevels();
+        if (ToDouse())
+        {
+            Douse();
+            _post_watering_moistures = ReadWaterLevels();
+        }
+        else
+        {
+            _post_watering_moistures = _pre_watering_moistures;
+        }
+    }
+
     bool ToDouse()
     {
         bool to_douse = 0; // 1 get watered
-        std::vector<uint32_t> prewatering_moistures = std::vector<uint32_t>();
-        std::vector<uint32_t> postwatering_moistures = std::vector<uint32_t>();
-
-        prewatering_moistures = ReadWaterLevels();
 
         // determine if watering is needed
-        for (int i = 0; i < prewatering_moistures.size(); i++)
-            to_douse = to_douse && (prewatering_moistures[i] < _watering_threshold);
-
-        if (!to_douse)
-            // if the plant doesn't need to be watered then they are equal
-            postwatering_moistures = prewatering_moistures;
+        for (int i = 0; i < _pre_watering_moistures.size(); i++)
+            to_douse = to_douse && (_pre_watering_moistures[i] < _watering_threshold);
 
         return to_douse;
     }
 
-    std::vector<uint32_t> ReadWaterLevels()
+    void Douse()
     {
-        std::vector<uint32_t> moistures = std::vector<uint32_t>();
+        _solenoid_mux.Select(_solenoid_selector_pin);
+        _reservoir.Douse(*_solenoid, 250);
+    }
+
+    std::vector<float> ReadWaterLevels()
+    {
+        std::vector<float> moistures = std::vector<float>();
 
         for (int i = 0; i < _sensors.size(); i++)
+        {
+            _sensor_mux.Select(_sensor_selector_pins[i]);
             moistures.push_back(_sensors[i]->ReadPercent());
+        }
 
         return moistures;
     }
@@ -199,35 +242,26 @@ public:
     }
 };
 
-class Resevoir
+class Reservoir
 {
 private:
     Component *_pump;
-    CapacitiveSensor *_sensor;
+    CapacitiveWaterSensor *_sensor;
+    uint8_t _selector_pin;
+    AnalogMux &_mux;
 
     Component *_led;
     bool _flash_led;
 
     int _min_percent;
 
-    bool DetectWater()
-    {
-        float percent = _sensor->ReadPercent();
-
-        // if its about the minimum level then there is water.
-        if (percent > _min_percent)
-            _flash_led = false;
-        return true;
-
-        _flash_led = true;
-        return false;
-    }
-
 public:
-    Resevoir(uint8_t pump_pin, CapacitiveSensor sensor_pin, int min_percent, uint8_t led_pin = -1)
+    Reservoir(uint8_t pump_pin, uint8_t analog_pin, uint8_t selector_pin, AnalogMux &mux, int min_percent, uint8_t led_pin = -1)
+        : _mux(mux)
     {
         _pump = new Component(pump_pin);
-        _sensor = new CapacitiveSensor(sensor_pin);
+        _sensor = new CapacitiveWaterSensor(analog_pin);
+        _selector_pin = selector_pin;
 
         _min_percent = min_percent;
 
@@ -239,7 +273,7 @@ public:
         _flash_led = false;
     }
 
-    ~Resevoir()
+    ~Reservoir()
     {
         delete _pump;
         delete _sensor;
@@ -259,13 +293,28 @@ public:
             while (millis() < time_end)
                 if (!DetectWater())
                     break;
+            _pump->TurnOff();
+            delay(500); // let water drain back into reservoir TODO find accurate timeing.
+            solenoid.TurnOff();
             // delay(100);
         }
     }
 
+    bool DetectWater()
+    {
+        _mux.Select(_selector_pin);
+        float percent = _sensor->ReadPercent();
+
+        // if its about the minimum level then there is water.
+        if (percent > _min_percent)
+            return true;
+
+        return false;
+    }
+
     void Status()
     {
-        if (_flash_led)
+        if (!DetectWater())
             if (_led != NULL)
                 _led->Toggle();
     }
@@ -300,6 +349,10 @@ public:
     void Manage()
     {
     }
+
+    String ToString()
+    {
+    }
 };
 
 const String _ssid = "";
@@ -313,6 +366,8 @@ uint8_t _morning_threshold = 7;  // time to check levels in the morning
 uint8_t _evening_threshold = 20; // time to check the levels in the evening
 int8_t _tz = -7;                 // timezone
 
+const uint8_t MAIN_RESERVOIR = 14;
+
 // uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
 uint32_t _sleepTime = 300000; // This will change based on how often to check the plant
 
@@ -322,9 +377,16 @@ uint16_t _waterDuration = 5000; // TODO measure how much water the pump can pump
     // 1 + (wanted mL / flow) <-- this is the duration in seconds.
     // according to my old program, 5000ms is about 250mL
 Plant *hugh;
+AnalogMux *mux;
 
 // TODO ask the server for infromation first, if nothing is recieved,
 // use default values or current set values.
+
+// TODO change the code for reservoir, I can juse use the CapacitiveSensor library
+// for it and then I'll need to calibrate the water level expectation.
+// this means I will not need the MUX in the reservoir at all.
+// Also, as expandability perhaps having mux inside of the plant is determintal,
+// or I could have a default value of none so that i do a check if needed.
 
 void setup()
 {
@@ -332,10 +394,13 @@ void setup()
 
     ConnectToWifi();
 
-    Resevoir main_reserovir = Resevoir(14, )
+    std::vector<uint8_t> select_pins = {D0, D1, D2};
+    mux = new AnalogMux(select_pins);
 
-        uint8_t hugh_pins[] = {0xA0};
-    hugh = new Plant("Hugh", 1, hugh_pins, );
+    Reservoir main_reserovir = Reservoir(MAIN_RESERVOIR, 0xA0, 0, *mux, 20, D10);
+
+    uint8_t hugh_pins[] = {0xA0};
+    hugh = new Plant("Hugh", 0xA0, hugh_pins, main_reserovir, );
 }
 
 void loop()
@@ -382,3 +447,15 @@ void InitTime()
         delay(1000);
     }
 }
+
+static const uint8_t D0 = 16;
+static const uint8_t D1 = 5;
+static const uint8_t D2 = 4;
+static const uint8_t D3 = 0;
+static const uint8_t D4 = 2;
+static const uint8_t D5 = 14;
+static const uint8_t D6 = 12;
+static const uint8_t D7 = 13;
+static const uint8_t D8 = 15;
+static const uint8_t D9 = 3;
+static const uint8_t D10 = 1;
