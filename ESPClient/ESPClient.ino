@@ -127,13 +127,19 @@ public:
 
     bool Detect()
     {
-        long v = _sensor->capacitiveSensor(20);
-        if (v > 15)
-            _sensor->reset_CS_AutoCal();
+        long total = 0;
+        int reads = 20;
+        for (int i = 0; i < reads; i++)
+        {
+            long v = _sensor->capacitiveSensor(20);
+            total += v;
+            if (v > 15)
+                _sensor->reset_CS_AutoCal();
+        }
 
-        if (v > 0)
+        if (total / reads >= 4)
             return true;
-
+        
         return false;
     }
 };

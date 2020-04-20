@@ -35,9 +35,10 @@ Web:
     -- Add in resizing for both?
 
 Circuit: 
-    -- Switch to using a mosfets and capacitor sensors
+    -- Switch to using a mosfets
     -- Add multiplexer
-
+    -- For the emulated voltage sensor, I need to have the two prongs as close together has possible pretty much touching.
+        otherwise they are unstable.
 3D Model:
     -- make a 3d model that can encase the prongs that go into the ground, the top should be able to be popped off so a replacement can happen as well, as wires to be added
     -- make it modular like lego blocks with holes.
