@@ -171,6 +171,7 @@ public:
     }
 };
 
+// Could have a digitalMux to have more solenoids.
 class Plant
 {
 private:
@@ -179,18 +180,18 @@ private:
     std::vector<uint8_t> _sensor_selector_pins;
     AnalogMux &_sensor_mux;
     Reservoir &_reservoir; // this is so that multiple plants can use the same Reservoir
-    AnalogMux &_solenoid_mux;
-    uint8_t _solenoid_selector_pin;
+    // AnalogMux &_solenoid_mux;
+    // uint8_t _solenoid_selector_pin;
     Component *_solenoid;
-    int _watering_threshold;
-    int _water_amount;
+    uint8_t _watering_threshold;
+    uint16_t _water_amount;
 
     std::vector<float> _pre_watering_moistures;
     std::vector<float> _post_watering_moistures;
 
 public:
-    Plant(String name, uint8_t analog_pin, std::vector<uint8_t> sensor_selector_pins, AnalogMux &sensor_mux, Reservoir &reservoir, int watering_threshold, int water_amount, int solenoid_pin, uint8_t solenoid_selector_pin, AnalogMux &solenoid_mux)
-        : _reservoir(reservoir), _sensor_mux(sensor_mux), _solenoid_mux(solenoid_mux) // this is how to reference
+    Plant(String name, uint8_t analog_pin, std::vector<uint8_t> sensor_selector_pins, AnalogMux &sensor_mux, Reservoir &reservoir, uint8_t watering_threshold, uint16_t water_amount, uint8_t solenoid_pin)
+        : _reservoir(reservoir), _sensor_mux(sensor_mux) // this is how to reference
     {
         _name = name;
 
@@ -242,8 +243,9 @@ public:
 
     void Douse()
     {
-        _solenoid_mux.Select(_solenoid_selector_pin);
-        _reservoir.Douse(*_solenoid, 250);
+        _solenoid->TurnOn();
+        _reservoir.Douse(250);
+        _solenoid->TurnOff();
     }
 
     std::vector<float> ReadWaterLevels()
@@ -270,25 +272,17 @@ class Reservoir
 private:
     Component *_pump;
     VoltageSensor *_sensor;
-    uint8_t _selector_pin;
-    AnalogMux &_mux;
 
     Component *_led;
     bool _flash_led;
 
     int _min_percent;
 
-    //
-    // TODO change all of these settings to the VoltageSensor
-    //
-    //
-
 public:
     Reservoir(uint8_t pump_pin, uint8_t send_pin, uint8_t recieve_pin, int min_percent, uint8_t led_pin = -1)
     {
         _pump = new Component(pump_pin);
-        _sensor = new CapacitiveWaterSensor(analog_pin);
-        _selector_pin = selector_pin;
+        _sensor = new VoltageSensor(send_pin, recieve_pin);
 
         _min_percent = min_percent;
 
@@ -309,34 +303,25 @@ public:
 
     // solenoid is a valve,
     // amount is in mL
-    bool Douse(Component &solenoid, int amount)
+    bool Douse(int amount)
     {
         if (DetectWater())
         {
             // water the plant
             int time_end = millis() + (TIME_PER_MILLILITRE * amount);
-            solenoid.TurnOn();
             _pump->TurnOn();
             while (millis() < time_end)
                 if (!DetectWater())
                     break;
             _pump->TurnOff();
             delay(500); // let water drain back into reservoir TODO find accurate timeing.
-            solenoid.TurnOff();
             // delay(100);
         }
     }
 
     bool DetectWater()
     {
-        _mux.Select(_selector_pin);
-        float percent = _sensor->ReadPercent();
-
-        // if its about the minimum level then there is water.
-        if (percent > _min_percent)
-            return true;
-
-        return false;
+        return _sensor->Detect();
     }
 
     void Status()
@@ -351,18 +336,19 @@ public:
     }
 };
 
-class PlantWaterer
+class Manager
 {
 private:
     std::vector<Plant &> _plants;
+    std::vector<Reservoir &> _reservoirs;
 
 public:
-    PlantWaterer()
+    Manager()
     {
         _plants = std::vector<Plant &>();
     }
 
-    ~PlantWaterer()
+    ~Manager()
     {
         for (int i = 0; i < _plants.size(); i++)
             delete &_plants[i];
@@ -373,12 +359,30 @@ public:
         _plants.push_back(plant);
     }
 
+    void RegisterReservoir(Reservoir &reservoir)
+    {
+        _reservoirs.push_back(reservoir);
+    }
+
     void Manage()
     {
+        for (auto plant : _plants)
+            plant.Manage();
+    }
+
+    void ReservoirStatuses()
+    {
+        for (auto reservoir : _reservoirs)
+            reservoir.Status();
     }
 
     String ToString()
     {
+        String msg = "";
+        for (auto plant : _plants)
+            msg += plant.ToString();
+
+        return msg;
     }
 };
 
@@ -393,18 +397,13 @@ uint8_t _morning_threshold = 7;  // time to check levels in the morning
 uint8_t _evening_threshold = 20; // time to check the levels in the evening
 int8_t _tz = -7;                 // timezone
 
-const uint8_t MAIN_RESERVOIR = 14;
-
+unsigned long _prev_time_check = 0;
+unsigned long _prev_time = 0;
 // uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
-uint32_t _sleepTime = 300000; // This will change based on how often to check the plant
+unsigned long _sleep_time = 300000; // 5min This will change based on how often to check the plant
 
-uint16_t _waterDuration = 5000; // TODO measure how much water the pump can pump in a second.
-    // That amount wil be the starting point where I can do 1 seocnd to start the pump
-    // plus the time that it will take to equal a certain amount of litres
-    // 1 + (wanted mL / flow) <-- this is the duration in seconds.
-    // according to my old program, 5000ms is about 250mL
-Plant *hugh;
-AnalogMux *mux;
+Manager _manager = Manager();
+
 
 // TODO ask the server for infromation first, if nothing is recieved,
 // use default values or current set values.
@@ -421,30 +420,64 @@ void setup()
 
     ConnectToWifi();
 
+    // initial set the time
+    InitTime();
+
+    String name = "Hugh";
+    uint8_t analog_pin = 0xA0;
+    
+    // if we had more than one sensor then we'd need a selector for each.
+    std::vector<uint8_t> hugh_select_pins = std::vector<uint8_t>(); 
+
     std::vector<uint8_t> select_pins = {D0, D1, D2};
-    mux = new AnalogMux(select_pins);
+    AnalogMux mux = AnalogMux(select_pins);
 
-    Reservoir main_reserovir = Reservoir(MAIN_RESERVOIR, 0xA0, 0, *mux, 20, D10);
+    Reservoir main_reserovir = Reservoir(D3, D4, D5, 20, D10);
 
-    uint8_t hugh_pins[] = {0xA0};
-    hugh = new Plant("Hugh", 0xA0, hugh_pins, main_reserovir, );
+    uint8_t watering_threshold = 25; // 25%
+    uint16_t water_amount = 250; // 250mL
+    uint8_t solenoid_pin = D6;
+
+    Plant hugh = Plant(name, analog_pin, hugh_select_pins, mux, main_reserovir, watering_threshold, water_amount, solenoid_pin);
+
+    
+    // register reservoirs
+    _manager.RegisterReservoir(main_reserovir);
+
+
+
+    // register plants
+    _manager.RegisterPlant(hugh);
+
 }
 
 void loop()
 {
-    time_t now = time(nullptr);
-    struct tm *p_tm = localtime(&now);
-    uint8_t hr = p_tm->tm_hour;
 
-    // if (hr > _morning_threshold && hr < _evening_threshold)
-    if (true)
+    long curr_time = millis();
+    if (curr_time  > _prev_time + _sleep_time)
     {
-        // do the watering checks of all of the plants
+        // check the time every 24 hrs, just to make sure it doesn't get out of sync.
+        if (curr_time > _prev_time_check + (unsigned long)86400000)
+            InitTime();
 
-        // Send to the server
+        uint8_t hr = CheckTime();
+
+
+        _prev_time = curr_time;
+        // TODO remove
+        hr = 10;
+        if (hr > _morning_threshold && hr < _evening_threshold)
+        {
+            // do the watering checks of all of the plants
+            _manager.Manage();
+
+            // Send to the server
+            String msg = _manager.ToString();
+        }
     }
-
     // sleep for a certain amount of time
+    delay(1000);
 }
 
 void ConnectToWifi()
@@ -473,6 +506,15 @@ void InitTime()
         Serial.println(".");
         delay(1000);
     }
+}
+
+uint8_t CheckTime()
+{
+    time_t now = time(nullptr);
+    struct tm *p_tm = localtime(&now);
+    uint8_t hr = p_tm->tm_hour;
+
+    return hr;
 }
 
 static const uint8_t D0 = 16;
