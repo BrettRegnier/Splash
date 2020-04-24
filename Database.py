@@ -2,6 +2,77 @@ import datetime
 import sqlite3
 from sqlite3 import Error
 
+#https://stackoverflow.com/questions/38076220/python-mysqldb-connection-in-a-class
+
+class Database:
+    def __init__(self, db):
+        self._db = db
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    @property
+    def Connection(self):
+        self._connection
+    
+    @property
+    def Cursor(self):
+        self._cursor
+
+    def Connect(self):
+        self._connection = sqlite3.connect(self._db)
+        self._curosr = self._connection.cursor()
+
+    def Commit(self):
+        self.Connection.commit()
+
+    def Close(self, commit=True):
+        if commit:
+            self.Commit()
+        self.Connection.close()
+    
+    def Execute(self, sql, params=None):
+        self.Cursor.execute(sql, params or ())
+
+    def FetchAll(self):
+        return self.Cursor.fetchall()
+    
+    def FetchOne(self):
+        return self.cursor.fetchone()
+    
+    def Query(self, sql, params=None):
+        self.Cursor.execute(sql, params or ())
+        return self.FetchAll()
+
+    def InsertPlant(self, name, detectors, time):
+        try:
+            self.Connect()
+            print("Connected to database")
+            print("Inserting plant")
+
+            FetchOnePlant()
+        except Error as e:
+            print(e)
+        finally:
+            self.Close()
+
+    def FetchOnePlant(self):
+        self.Execute('''SELECT count(name) FROM sqlite_master
+            WHERE type='table' AND name='Plants';''')
+        if self.FetchOne()[0] == 0:
+            self.Execute('''CREATE TABLE Plants (
+                                        name TEXT NOT NULL PRIMARY KEY,
+                                        detectors INTEGER,
+                                        setupDate timestamp
+                                        );
+                                        ''')
+
+    def PlantExists(self, name):
+        self.Execute("""SELECT count(name) FROM Plants WHERE name=?""", (name,))
+
 
 def InsertPlant(db, name, detectors, time):
     conn = None

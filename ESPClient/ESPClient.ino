@@ -2,7 +2,6 @@
 #include <CapacitiveSensor.h>
 #include <time.h>
 #include <vector>
-#include <string>
 
 /* TODO move this into a documentation file.
 // For a message it is of format x;y;j;k
@@ -21,13 +20,29 @@
 
 const int TIME_PER_MILLILITRE = 20;
 
+//static const uint8_t D0 = 16;
+//static const uint8_t D1 = 5;
+//static const uint8_t D2 = 4;
+//static const uint8_t D3 = 0;
+//static const uint8_t D4 = 2;
+//static const uint8_t D5 = 14;
+//static const uint8_t D6 = 12;
+//static const uint8_t D7 = 13;
+//static const uint8_t D8 = 15;
+//static const uint8_t D9 = 3;
+//static const uint8_t D10 = 1;
+
+void ConnectToWifi();
+void InitTime();
+uint8_t CheckTime();
+
 class CapacitiveWaterSensor
 {
 private:
     uint8_t _analog_pin;
     float _min;
     float _max;
-    int _read_time;
+    unsigned long _read_time;
 
 public:
     CapacitiveWaterSensor(uint8_t analog_pin)
@@ -40,18 +55,14 @@ public:
 
     float Read()
     {
-        uint32_t read_end;
-        float values;
-        float reads;
-
-        read_end = millis() + _read_time;
-        values = 0.f;
-        reads = 0.f;
+        unsigned long read_end = millis() + _read_time;
+        float values = 0.f;
+        float reads = 0.f;
         while (millis() < read_end)
         {
             values += analogRead(_analog_pin);
             reads += 1.f;
-            // delay(100); // TOOD do I need this?
+            delay(100);
         }
 
         return values / reads;
@@ -59,6 +70,7 @@ public:
 
     float ReadPercent()
     {
+        yield();
         float val = Read();
 
         // adjust values to be tailored to that plant
@@ -98,7 +110,7 @@ public:
             if (selector & (1 << i))
                 digitalWrite(_selector_pins[i], HIGH);
             else
-                digitalWrite(_selector_pins[i], HIGH);
+                digitalWrite(_selector_pins[i], LOW);
         }
     }
 };
@@ -128,7 +140,7 @@ public:
     bool Detect()
     {
         long total = 0;
-        int reads = 20;
+        int reads = 50;
         for (int i = 0; i < reads; i++)
         {
             long v = _sensor->capacitiveSensor(20);
@@ -137,9 +149,9 @@ public:
                 _sensor->reset_CS_AutoCal();
         }
 
-        if (total / reads >= 4)
+        if (total / reads > 0)
             return true;
-        
+
         return false;
     }
 };
@@ -192,132 +204,6 @@ public:
     }
 };
 
-// Could have a digitalMux to have more solenoids.
-class Plant
-{
-private:
-    String _name;
-    std::vector<CapacitiveWaterSensor *> _sensors;
-    std::vector<uint8_t> _sensor_selector_pins;
-    AnalogMux &_sensor_mux;
-    Reservoir &_reservoir; // this is so that multiple plants can use the same Reservoir
-    // AnalogMux &_solenoid_mux;
-    // uint8_t _solenoid_selector_pin;
-    Component *_solenoid;
-    uint8_t _watering_threshold;
-    uint16_t _water_amount;
-
-    std::vector<float> _pre_watering_moistures;
-    std::vector<float> _post_watering_moistures;
-
-    bool _to_water;
-
-public:
-    Plant(String name, uint8_t analog_pin, uint8_t sensor_count, std::vector<uint8_t> sensor_selector_pins, AnalogMux &sensor_mux, Reservoir &reservoir, uint8_t watering_threshold, uint16_t water_amount, uint8_t solenoid_pin)
-        : _reservoir(reservoir), _sensor_mux(sensor_mux) // this is how to reference
-    {
-        _name = name;
-
-        _sensors = std::vector<CapacitiveWaterSensor *>();
-        _sensor_selector_pins = sensor_selector_pins;
-
-        for (int i = 0; i < sensor_count; i++)
-            _sensors.push_back(new CapacitiveWaterSensor(analog_pin));
-        _solenoid = new Component(solenoid_pin);
-
-        _watering_threshold = watering_threshold;
-        _water_amount = water_amount;
-
-        _pre_watering_moistures = std::vector<float>(_sensor_selector_pins.size());
-        _post_watering_moistures = std::vector<float>(_sensor_selector_pins.size());
-
-        _to_water = false;
-    }
-
-    ~Plant()
-    {
-        for (auto sensor : _sensors)
-            delete sensor;
-        delete _solenoid;
-    }
-
-    void Manage()
-    {
-        _pre_watering_moistures = ReadWaterLevels();
-        if (ToWater())
-        {
-            Douse();
-            _post_watering_moistures = ReadWaterLevels();
-        }
-        else
-        {
-            _post_watering_moistures = _pre_watering_moistures;
-        }
-    }
-
-    bool ToWater()
-    {
-        _to_water = 0; // 1 get watered
-
-        // determine if watering is needed
-        for (int i = 0; i < _pre_watering_moistures.size(); i++)
-            _to_water = _to_water && (_pre_watering_moistures[i] < _watering_threshold);
-
-        return _to_water;
-    }
-
-    void Douse()
-    {
-        _solenoid->TurnOn();
-        _reservoir.Douse(250);
-        _solenoid->TurnOff();
-    }
-
-    std::vector<float> ReadWaterLevels()
-    {
-        std::vector<float> moistures = std::vector<float>();
-
-        for (int i = 0; i < _sensors.size(); i++)
-        {
-            _sensor_mux.Select(_sensor_selector_pins[i]);
-            moistures.push_back(_sensors[i]->ReadPercent());
-        }
-
-        return moistures;
-    }
-
-    String Message()
-    {
-        String msg = "";
-        msg.concat(0);
-        msg.concat(";");
-
-        msg.concat(_name);
-        msg.concat(";");
-
-        msg.concat(_to_water);
-        msg.concat(";");
-
-        uint8_t sensors_c = _sensors.size();
-        msg.concat(sensors_c);
-        msg.concat(";");
-
-        for (int i = 0; i < sensors_c; i++)
-        {
-            msg.concat(_pre_watering_moistures[i]);
-            msg.concat(";");
-        }
-
-        for (int i = 0; i < sensors_c; i++)
-        {
-            msg.concat(_post_watering_moistures[i]);
-            msg.concat(";");
-        }
-
-        return msg;
-    }
-};
-
 class Reservoir
 {
 private:
@@ -341,6 +227,7 @@ public:
 
         _min_percent = min_percent;
 
+        Serial.println(led_pin);
         if (led_pin >= 0)
             _led = new Component(led_pin);
         else
@@ -393,7 +280,144 @@ public:
         msg.concat(1);
         msg.concat(";");
 
+        msg.concat(_description);
+        msg.concat(";");
+
         msg.concat(_status);
+        msg.concat(";");
+
+        return msg;
+    }
+};
+
+// Could have a digitalMux to have more solenoids.
+class Plant
+{
+private:
+    String _name;
+    std::vector<CapacitiveWaterSensor> _sensors;
+    std::vector<uint8_t> _sensor_selector_pins;
+    AnalogMux *_sensor_mux;
+    Reservoir *_reservoir; // this is so that multiple plants can use the same Reservoir
+    // AnalogMux &_solenoid_mux;
+    // uint8_t _solenoid_selector_pin;
+    Component *_solenoid;
+    uint8_t _watering_threshold;
+    uint16_t _water_amount;
+
+    std::vector<float> _pre_watering_moistures;
+    std::vector<float> _post_watering_moistures;
+
+    bool _to_water;
+
+public:
+    Plant(String name, uint8_t analog_pin, uint8_t sensor_count, std::vector<uint8_t> sensor_selector_pins, AnalogMux *sensor_mux, Reservoir *reservoir, uint8_t watering_threshold, uint16_t water_amount, uint8_t solenoid_pin)
+    {
+        _name = name;
+
+        _sensors = std::vector<CapacitiveWaterSensor>();
+        _sensor_selector_pins = sensor_selector_pins;
+
+        for (int i = 0; i < sensor_count; i++)
+            _sensors.push_back(CapacitiveWaterSensor(analog_pin));
+
+        _sensor_mux = sensor_mux;
+        _reservoir = reservoir;
+        _solenoid = new Component(solenoid_pin);
+
+        _watering_threshold = watering_threshold;
+        _water_amount = water_amount;
+
+        _pre_watering_moistures = std::vector<float>();
+        _post_watering_moistures = std::vector<float>();
+
+        _to_water = false;
+    }
+
+    ~Plant()
+    {
+        _sensors.clear();
+        delete _solenoid;
+    }
+
+    void Manage()
+    {
+        Serial.println("before checking pre water");
+        _pre_watering_moistures = ReadWaterLevels();
+        for (int i = 0; i < _pre_watering_moistures.size(); i++)
+            Serial.println(_pre_watering_moistures[i]);
+        Serial.println("after checking pre water");
+        if (ToWater())
+        {
+            Douse();
+            _post_watering_moistures = ReadWaterLevels();
+        }
+        else
+        {
+            _post_watering_moistures = _pre_watering_moistures;
+        }
+    }
+
+    bool ToWater()
+    {
+        _to_water = 0; // 1 get watered
+
+        // determine if watering is needed
+        for (int i = 0; i < _pre_watering_moistures.size(); i++)
+            _to_water = _to_water && (_pre_watering_moistures[i] < _watering_threshold);
+
+        return _to_water;
+    }
+
+    void Douse()
+    {
+        _solenoid->TurnOn();
+        _reservoir->Douse(250);
+        _solenoid->TurnOff();
+    }
+
+    std::vector<float> ReadWaterLevels()
+    {
+        std::vector<float> moistures = std::vector<float>();
+
+        for (int i = 0; i < _sensors.size(); i++)
+        {
+            // todo this
+            // _sensor_mux->Select(_sensor_selector_pins[i]);
+            Serial.println("after select and before reading");
+            moistures.push_back(_sensors[i].ReadPercent());
+        }
+
+        return moistures;
+    }
+
+    String Message()
+    {
+        String msg = "";
+        msg.concat(0);
+        msg.concat(";");
+
+        msg.concat(_name);
+        msg.concat(";");
+
+        msg.concat(_to_water);
+        msg.concat(";");
+
+        uint8_t sensors_c = _sensors.size();
+        msg.concat(sensors_c);
+        msg.concat(";");
+
+        for (int i = 0; i < sensors_c; i++)
+        {
+            msg.concat(_pre_watering_moistures[i]);
+            msg.concat(";");
+        }
+
+        for (int i = 0; i < sensors_c; i++)
+        {
+            msg.concat(_post_watering_moistures[i]);
+            msg.concat(";");
+        }
 
         return msg;
     }
@@ -402,27 +426,30 @@ public:
 class Manager
 {
 private:
-    std::vector<Plant &> _plants;
-    std::vector<Reservoir &> _reservoirs;
+    std::vector<Plant *> _plants;
+    std::vector<Reservoir *> _reservoirs;
 
 public:
     Manager()
     {
-        _plants = std::vector<Plant &>();
+        _plants = std::vector<Plant *>();
+        _reservoirs = std::vector<Reservoir *>();
     }
 
     ~Manager()
     {
-        for (int i = 0; i < _plants.size(); i++)
-            delete &_plants[i];
+        for (auto plant : _plants)
+            delete plant;
+        for (auto reservoir : _reservoirs)
+            delete reservoir;
     }
 
-    void RegisterPlant(Plant &plant)
+    void RegisterPlant(Plant *plant)
     {
         _plants.push_back(plant);
     }
 
-    void RegisterReservoir(Reservoir &reservoir)
+    void RegisterReservoir(Reservoir *reservoir)
     {
         _reservoirs.push_back(reservoir);
     }
@@ -430,23 +457,26 @@ public:
     void Manage()
     {
         for (auto plant : _plants)
-            plant.Manage();
+        {
+            Serial.println("Manging plant");
+            plant->Manage();
+        }
     }
 
     void ReservoirStatuses()
     {
         for (auto reservoir : _reservoirs)
-            reservoir.Status();
+            reservoir->Status();
     }
 
     std::vector<String> Messages()
     {
         std::vector<String> msg = std::vector<String>();
         for (auto plant : _plants)
-            msg.push_back(plant.Message());
+            msg.push_back(plant->Message());
 
         for (auto reservoir : _reservoirs)
-            msg.push_back(reservoir.Message());
+            msg.push_back(reservoir->Message());
 
         return msg;
     }
@@ -455,7 +485,7 @@ public:
 const String _ssid = "";
 const String _password = "";
 
-const String _host = "192.168.0.39";
+const String _host = "192.168.0.36";
 const uint16_t _port = 8777;
 
 uint8_t _min_threshhold = 30;    // percent in which we water
@@ -466,7 +496,7 @@ int8_t _tz = -7;                 // timezone
 uint32_t _prev_time_check = 0;
 uint32_t _prev_time = 0;
 // uint32_t _sleepTime = 3600000; // This will change based on how often to check the plant
-unsigned long _sleep_time = 300000; // 5min This will change based on how often to check the plant
+unsigned long _sleep_time = 10000; // 5min This will change based on how often to check the plant
 
 Manager _manager = Manager();
 
@@ -488,36 +518,44 @@ void setup()
     // initial set the time
     InitTime();
 
-    String name = "Hugh";
+    String hugh_name = "Hugh";
+    Serial.println(hugh_name);
     uint8_t analog_pin = 0xA0;
 
     // if we had more than one sensor then we'd need a selector for each.
     uint8_t sensors_c = 1;
-    std::vector<uint8_t> hugh_select_pins = {D0};
+    // D0
+    std::vector<uint8_t> hugh_select_pins = {16};
 
-    std::vector<uint8_t> select_pins = {D0, D1, D2};
-    AnalogMux mux = AnalogMux(select_pins);
+    // D0, D1, D2
+    std::vector<uint8_t> select_pins = {16, 5, 4};
+    AnalogMux *mux = new AnalogMux(select_pins);
 
-    String description = "Main";
-    Reservoir main_reserovir = Reservoir(description, D3, D4, D5, 20, D10);
+    String description = "main_reservoir";
+    // D5, D3, D4, D6
+    Serial.println("before making reservoir");
+    Reservoir *main_reserovir = new Reservoir(description, 14, 0, 2, 20, 12);
+    Serial.println("after making reservoir");
 
     uint8_t watering_threshold = 25; // 25%
     uint16_t water_amount = 250;     // 250mL
-    uint8_t solenoid_pin = D6;
+    uint8_t solenoid_pin = 12;       // D6
 
-    Plant hugh = Plant(name, analog_pin, sensors_c, hugh_select_pins, mux, main_reserovir, watering_threshold, water_amount, solenoid_pin);
+    Serial.println("Before making plant");
+    Plant *hugh = new Plant(hugh_name, analog_pin, sensors_c, hugh_select_pins, mux, main_reserovir, watering_threshold, water_amount, solenoid_pin);
+    Serial.println("after making plant");
 
-    // register reservoirs
+    //      register reservoirs
     _manager.RegisterReservoir(main_reserovir);
 
     // register plants
     _manager.RegisterPlant(hugh);
+    Serial.println("done initialization");
 }
 
 void loop()
 {
-
-    long curr_time = millis();
+    unsigned long curr_time = millis();
     if (curr_time > _prev_time + _sleep_time)
     {
         // check the time every 24 hrs, just to make sure it doesn't get out of sync.
@@ -525,6 +563,7 @@ void loop()
             InitTime();
 
         uint8_t hr = CheckTime();
+        Serial.println(hr);
 
         _prev_time = curr_time;
         // TODO remove
@@ -547,6 +586,9 @@ void loop()
                 delay(1000);
             }
 
+            
+            Serial.println("Connected to host");
+            yield();
             // Send to the server
             if (client.connected())
             {
@@ -615,12 +657,13 @@ void ConnectToWifi()
 void InitTime()
 {
     configTime(_tz * 3600, 0, "pool.ntp.org", "time.nist.gov");
-    Serial.println("\nWaiting for time");
+    Serial.print("\nWaiting for time");
     while (time(nullptr) <= 100000)
     {
-        Serial.println(".");
+        Serial.print(".");
         delay(1000);
     }
+    Serial.println("");
 }
 
 uint8_t CheckTime()
@@ -631,15 +674,3 @@ uint8_t CheckTime()
 
     return hr;
 }
-
-static const uint8_t D0 = 16;
-static const uint8_t D1 = 5;
-static const uint8_t D2 = 4;
-static const uint8_t D3 = 0;
-static const uint8_t D4 = 2;
-static const uint8_t D5 = 14;
-static const uint8_t D6 = 12;
-static const uint8_t D7 = 13;
-static const uint8_t D8 = 15;
-static const uint8_t D9 = 3;
-static const uint8_t D10 = 1;

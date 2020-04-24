@@ -6,8 +6,10 @@ import datetime
 import sqlite3
 from sqlite3 import Error
 
+import sys
 
-import SplashFunctions
+
+import Database
 
 
 class Server:
@@ -33,7 +35,7 @@ class Server:
         conThread.start()
 
         # Run thread for database
-        dbThread = threading.Thread(target=self.DatabaseHandler)
+        dbThread = threading.Thread(target=self.MessageHandler)
         dbThread.daemon = True
         dbThread.start()
 
@@ -81,38 +83,46 @@ class Server:
                     client.close()
                     return
             except:
+                print("Unexpected error:", sys.exc_info()[0])
                 print(str(addr[0]) + ":", str(addr[1]), "disconnected")
                 self._connections.remove(client)
                 client.close()
                 return
 
-    def DatabaseHandler(self):
+    def MessageHandler(self):
         while self._running:
             item = self._queue.get()
-            print("Received", item)
             if item is not None:
-                name = item[0]
-                detectors = int(item[1])
-                isWatered = int(item[2])
-                time = datetime.datetime.now()
+                m_type = int(item[0])
+                m_name = item[1]
+
+                current_time = datetime.datetime.now()
+
+                # plant message
+                if (m_type == 0):
+                    m_to_water = bool(item[2])
+                    m_detectors = int(item[3])
+                    
+                    m_levels = []
+                    for x in range(m_detectors):
+                        m_levels.append([])
+                        m_levels[x].append(item[4 + x])  # premoisture
+                        m_levels[x].append(item[4 * m_detectors + x])  # postmoisture
+                    
+                    print(m_type, m_name, current_time, m_to_water, m_detectors, m_levels)
+                    # SplashFunctions.SaveEntryToFile(s)
+
+                    # SplashFunctions.InsertPlant(self._db, name, detectors, time)
+                    # for xid in range(detectors):
+                    #     premoist = int(item[3 + xid])
+                    #     postmoist = int(item[3 + detectors + xid])
+                    #     SplashFunctions.InsertMoisture(
+                    #         self._db, name, xid, time, isWatered, premoist, postmoist)
                 
-                lLevels = []
-                for x in range(detectors):
-                    lLevels.append([])
-                    lLevels[x].append(item[3 + x])  # premoisture
-                    lLevels[x].append(item[3 * detectors + x])  # postmoisture
-
-                # TODO remove
-                s = name + " " + str(detectors) + " " + str(isWatered) + " " + str(item[3]) + " " + str(item[4]) + " " + str(time)
-                print(s)
-                SplashFunctions.SaveEntryToFile(s)
-
-                # SplashFunctions.InsertPlant(self._db, name, detectors, time)
-                # for xid in range(detectors):
-                #     premoist = int(item[3 + xid])
-                #     postmoist = int(item[3 + detectors + xid])
-                #     SplashFunctions.InsertMoisture(
-                #         self._db, name, xid, time, isWatered, premoist, postmoist)
+                # reservoir message
+                elif (m_type == 1):
+                    m_status = bool(item[2])
+                    print(m_type, m_name, current_time, m_status)
 
     def Console(self):
         while self._running:
