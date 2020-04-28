@@ -49,12 +49,13 @@ public:
     {
         _analog_pin = analog_pin;
         _min = 500.f;
-        _max = 700.f;
+        _max = 740.f;
         _read_time = 2000;
     }
 
     float Read()
     {
+        yield();
         unsigned long read_end = millis() + _read_time;
         float values = 0.f;
         float reads = 0.f;
@@ -64,8 +65,10 @@ public:
             reads += 1.f;
             delay(100);
         }
-
-        return values / reads;
+        Serial.println("analog read");
+        if (reads > 0)
+            return values / reads;
+        return 0;
     }
 
     float ReadPercent()
@@ -137,7 +140,7 @@ public:
         delete _sensor;
     }
 
-    bool Detect()
+    long Read()
     {
         long total = 0;
         int reads = 50;
@@ -149,7 +152,12 @@ public:
                 _sensor->reset_CS_AutoCal();
         }
 
-        if (total / reads > 0)
+        return total / reads;
+    }
+
+    bool Detect()
+    {
+        if (Read() > 1)
             return true;
 
         return false;
@@ -161,14 +169,15 @@ class Component
 private:
     bool _state;
     uint8_t _pin;
+    uint8_t _base;
 
 public:
     Component(uint8_t pin)
     {
         _pin = pin;
+        _state = false;
         pinMode(_pin, OUTPUT);
         digitalWrite(_pin, HIGH);
-        _state = false;
     }
 
     void Toggle()
@@ -185,22 +194,18 @@ public:
         Toggle();
     }
 
+    // the base determines if its naturally at a high or low state
+    // pin dependent, so I'll need to test all of them.
     void TurnOff()
     {
-        if (_state == true)
-        {
-            _state = false;
-            digitalWrite(_pin, HIGH);
-        }
+        _state = false;
+        digitalWrite(_pin, HIGH);
     }
 
     void TurnOn()
     {
-        if (_state == false)
-        {
-            _state = true;
-            digitalWrite(_pin, LOW);
-        }
+        _state = true;
+        digitalWrite(_pin, LOW);
     }
 };
 
@@ -214,24 +219,32 @@ private:
     Component *_led;
     bool _flash_led;
 
-    int _min_percent;
-
     bool _status;
 
 public:
-    Reservoir(String description, uint8_t pump_pin, uint8_t send_pin, uint8_t recieve_pin, int min_percent, uint8_t led_pin = -1)
+    Reservoir(String description, uint8_t pump_pin, uint8_t send_pin, uint8_t recieve_pin, uint8_t led_pin = -1)
     {
         _description = description;
         _pump = new Component(pump_pin);
         _sensor = new VoltageSensor(send_pin, recieve_pin);
-
-        _min_percent = min_percent;
 
         Serial.println(led_pin);
         if (led_pin >= 0)
             _led = new Component(led_pin);
         else
             _led = NULL;
+
+        _flash_led = false;
+        _status = false;
+    }
+
+    Reservoir(String description, Component *pump, VoltageSensor *sensor, Component *led = NULL)
+    {
+        _description = description;
+        _pump = pump;
+        _sensor = sensor;
+        
+        _led = led;
 
         _flash_led = false;
         _status = false;
@@ -251,20 +264,40 @@ public:
         if (DetectWater())
         {
             // water the plant
-            int time_end = millis() + (TIME_PER_MILLILITRE * amount);
+            unsigned long time_end = millis() + (TIME_PER_MILLILITRE * amount);
+            Serial.println("Before pump on");
             _pump->TurnOn();
+            Serial.println("After pump on");
             while (millis() < time_end)
+            {
+                yield();
                 if (!DetectWater())
-                    break;
+                {
+                    _pump->TurnOff();
+                    return false;
+                }
+            }
+            Serial.println("after watering");
+
             _pump->TurnOff();
             delay(500); // let water drain back into reservoir TODO find accurate timing.
         }
+
+        return true;
     }
 
     bool DetectWater()
     {
         _status = _sensor->Detect();
+        // Serial.println(_status);
+        if (_status)
+            _led->TurnOn(); // turns the voltage to high to turn off.
         return _status;
+    }
+
+    long Read()
+    {
+        return _sensor->Read();
     }
 
     void Status()
@@ -349,7 +382,9 @@ public:
         Serial.println("after checking pre water");
         if (ToWater())
         {
+            Serial.println("before douse");
             Douse();
+            Serial.println("after douse");
             _post_watering_moistures = ReadWaterLevels();
         }
         else
@@ -360,7 +395,7 @@ public:
 
     bool ToWater()
     {
-        _to_water = 0; // 1 get watered
+        _to_water = true; // 1 get watered
 
         // determine if watering is needed
         for (int i = 0; i < _pre_watering_moistures.size(); i++)
@@ -463,6 +498,16 @@ public:
         }
     }
 
+    // this is for debugging
+    std::vector<long> ReadReservoirs()
+    {
+        std::vector<long> reads = std::vector<long>();
+        for (auto reservoir : _reservoirs)
+            reads.push_back(reservoir->Read());
+
+        return reads;
+    }
+
     void ReservoirStatuses()
     {
         for (auto reservoir : _reservoirs)
@@ -479,6 +524,123 @@ public:
             msg.push_back(reservoir->Message());
 
         return msg;
+    }
+};
+
+class ModuleClient
+{
+private:
+    String _host;
+    uint16_t _port;
+    WiFiClient _client;
+
+    bool Connect()
+    {
+        Serial.println("Connect to host");
+        uint8_t attempts = 0;
+        if (!_client.connected())
+        {
+            while (!_client.connect(_host, _port))
+            {
+                Serial.print("Attempting to connect to host ");
+                Serial.println(9 - attempts);
+                if (attempts++ > 9)
+                    return false; // failed to connect not sending message.
+                delay(1000);
+            }
+        }
+        Serial.println("Connected to host");
+        return true;
+    }
+
+public:
+    ModuleClient(String host, uint16_t port)
+    {
+        _host = host;
+        _port = port;
+        _client = WiFiClient();
+    }
+
+    bool SendMessages(std::vector<String> msgs)
+    {
+        this->Connect();
+        // Send to the server
+        for (int i = 0; i < msgs.size(); i++)
+        {
+            if (_client.connected())
+            {
+                String msg = msgs[i];
+                Serial.println(msg);
+                Serial.println("Sending to host");
+
+                _client.write(msg.c_str());
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool SendMessage(String msg)
+    {
+        this->Connect();
+        // Send to the server
+        if (_client.connected())
+        {
+            Serial.println(msg);
+            Serial.println("Sending to host");
+
+            _client.write(msg.c_str());
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    std::vector<String> ReceiveMessage()
+    {
+        // TODO this part.
+        // recieve message and parse
+        this->Connect();
+        std::vector<String> msgs = std::vector<String>();
+
+        uint32_t timeout = millis() + 10000;
+        bool available = 1;
+        while (_client.available() == 0)
+        {
+            if (millis() > timeout)
+            {
+                Serial.println("Client Timeout");
+                available = 0;
+                break;
+            }
+            delay(100);
+        }
+
+        if (available)
+        {
+            Serial.println("Recieving from server");
+            while (_client.available())
+            {
+                String msg = String(static_cast<char>(_client.read()));
+                msgs.push_back(msg);
+                Serial.println(msg);
+            }
+        }
+
+        return msgs;
+    }
+
+    void Stop()
+    {
+        // close connection
+        _client.stop();
     }
 };
 
@@ -499,6 +661,7 @@ uint32_t _prev_time = 0;
 unsigned long _sleep_time = 10000; // 5min This will change based on how often to check the plant
 
 Manager _manager = Manager();
+ModuleClient _client = ModuleClient(_host, _port);
 
 // TODO ask the server for infromation first, if nothing is recieved,
 // use default values or current set values.
@@ -508,6 +671,12 @@ Manager _manager = Manager();
 // this means I will not need the MUX in the reservoir at all.
 // Also, as expandability perhaps having mux inside of the plant is determintal,
 // or I could have a default value of none so that i do a check if needed.
+
+// TODO reference the pin reference for more and detailed expansions to the
+// plants that I can have attached..
+// https://randomnerdtutorials.com/esp8266-pinout-reference-gpios/
+
+// for now until I have muxes we don't need to worry too much.
 
 void setup()
 {
@@ -520,21 +689,23 @@ void setup()
 
     String hugh_name = "Hugh";
     Serial.println(hugh_name);
-    uint8_t analog_pin = 0xA0;
+    uint8_t analog_pin = 17; // A0
 
     // if we had more than one sensor then we'd need a selector for each.
     uint8_t sensors_c = 1;
-    // D0
-    std::vector<uint8_t> hugh_select_pins = {16};
+    // D1
+    std::vector<uint8_t> hugh_select_pins = {5};
 
-    // D0, D1, D2
-    std::vector<uint8_t> select_pins = {16, 5, 4};
+    // D1
+    std::vector<uint8_t> select_pins = {5};
     AnalogMux *mux = new AnalogMux(select_pins);
 
     String description = "main_reservoir";
-    // D5, D3, D4, D6
-    Serial.println("before making reservoir");
-    Reservoir *main_reserovir = new Reservoir(description, 14, 0, 2, 20, 12);
+    // D5, D2, D3, D6
+    Component* main_reservoir_pump = new Component(14);
+    VoltageSensor* main_reservoir_sensor = new VoltageSensor(4, 0);
+    Component* main_reservoir_led = new Component(12);
+    Reservoir *main_reserovir = new Reservoir(description, main_reservoir_pump, main_reservoir_sensor, main_reservoir_led);
     Serial.println("after making reservoir");
 
     uint8_t watering_threshold = 25; // 25%
@@ -573,66 +744,22 @@ void loop()
             // do the watering checks of all of the plants
             _manager.Manage();
 
-            // connext to host
-            Serial.println("Connect to host");
-            WiFiClient client;
-            uint8_t attempts = 0;
-            while (!client.connect(_host, _port))
-            {
-                Serial.print("Attempting to connect to host ");
-                Serial.println(9 - attempts);
-                if (attempts++ > 9)
-                    return; // failed to connect not sending message.
-                delay(1000);
-            }
-
-            
-            Serial.println("Connected to host");
             yield();
-            // Send to the server
-            if (client.connected())
-            {
-                std::vector<String> msgs = _manager.Messages();
 
-                for (int i = 0; i < msgs.size(); i++)
-                {
-                    String msg = msgs[i];
-                    Serial.println(msg);
-                    Serial.println("Sending to host");
+            _client.SendMessages(_manager.Messages());
 
-                    client.write(msg.c_str());
-                }
-            }
-
-            // TODO this part.
-            // recieve message and parse
-            uint32_t timeout = millis() + 10000;
-            bool available = 1;
-            while (client.available() == 0)
-            {
-                if (millis() > timeout)
-                {
-                    Serial.println("Client Timeout");
-                    available = 0;
-                    break;
-                }
-                delay(100);
-            }
-
-            if (available)
-            {
-                Serial.println("Recieving from server");
-                while (client.available())
-                {
-                    char ch = static_cast<char>(client.read());
-                    Serial.println(ch);
-                }
-            }
-
-            // close the connection
-            client.stop();
+            // TODO handle this
+            std::vector<String> msgs = _client.ReceiveMessage();
         }
+
+        // std::vector<long> values = _manager.ReadReservoirs();
+        // for (auto v : values)
+        //     _client.SendMessage(String(v) + ";");
     }
+
+    // Check the status of the reservoirs
+    _manager.ReservoirStatuses();
+
     // sleep for a certain amount of time
     delay(1000);
 }

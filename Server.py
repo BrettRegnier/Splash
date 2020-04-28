@@ -56,6 +56,7 @@ class Server:
         while self._running:
             try:
                 msg = client.recv(1024)
+                print(msg)
                 if msg:
                     msg = msg.decode("utf-8")
 
@@ -75,8 +76,11 @@ class Server:
                     self._queue.put(data)
 
                     # # TODO send back server config settings.
-                    print("responding")
-                    client.send(bytes("responding...", "utf-8"))
+                    # TODO only send back when the client is done sending,
+                    # so maybe it should have an end bit..? thats when the send
+                    # should be sent.
+                    # print("responding")
+                    client.send(bytes("r", "utf-8"))
                 else:
                     print(str(addr[0]) + ":", str(addr[1]), "disconnected")
                     self._connections.remove(client)
