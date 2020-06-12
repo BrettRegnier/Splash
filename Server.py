@@ -113,7 +113,13 @@ class Server:
                         m_levels[x].append(item[4 + x])  # premoisture
                         m_levels[x].append(item[4 * m_detectors + x])  # postmoisture
                     
-                    print(m_type, m_name, current_time, m_to_water, m_detectors, m_levels)
+                    # print(m_type, m_name, current_time, m_to_water, m_detectors, m_levels)
+                    print("Read type:", m_type)
+                    print("Name:", m_name)
+                    print("Time:", current_time)
+                    print("To Water:", m_to_water)
+                    print("Num Detectors:", m_detectors)
+                    print("Levels:", m_levels)
                     # SplashFunctions.SaveEntryToFile(s)
 
                     # SplashFunctions.InsertPlant(self._db, name, detectors, time)

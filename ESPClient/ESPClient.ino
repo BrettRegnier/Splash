@@ -50,7 +50,7 @@ public:
         _analog_pin = analog_pin;
         _min = 500.f;
         _max = 740.f;
-        _read_time = 2000;
+        _read_time = 200;
     }
 
     float Read()
@@ -66,8 +66,10 @@ public:
             delay(100);
         }
         Serial.println("analog read");
+        Serial.println(values/reads);
         if (reads > 0)
             return values / reads;
+
         return 0;
     }
 
@@ -88,7 +90,7 @@ public:
         else if (val < _min)
             val = _min;
 
-        val = ((val - _min) / (_max - _min)) * 100;
+        val = (1 - ((val - _min) / (_max - _min))) * 100;
 
         return val;
     }
@@ -115,52 +117,6 @@ public:
             else
                 digitalWrite(_selector_pins[i], LOW);
         }
-    }
-};
-
-// To trick this thing you need to make the send pin the resistor outputting from a pin
-// one of the metal bars should be hooked into ground,
-// the recieve pin should then be another one of the rods
-// send pin, rod, and recieve pin should all be hooked into a single rail.
-// see diagram.
-class VoltageSensor
-{
-private:
-    CapacitiveSensor *_sensor;
-
-public:
-    VoltageSensor(uint8_t send_pin, uint8_t recieve_pin)
-    {
-        _sensor = new CapacitiveSensor(send_pin, recieve_pin);
-        _sensor->set_CS_AutocaL_Millis(0xFFFFFFFF);
-    }
-
-    ~VoltageSensor()
-    {
-        delete _sensor;
-    }
-
-    long Read()
-    {
-        long total = 0;
-        int reads = 50;
-        for (int i = 0; i < reads; i++)
-        {
-            long v = _sensor->capacitiveSensor(20);
-            total += v;
-            if (v > 15)
-                _sensor->reset_CS_AutoCal();
-        }
-
-        return total / reads;
-    }
-
-    bool Detect()
-    {
-        if (Read() > 1)
-            return true;
-
-        return false;
     }
 };
 
@@ -214,97 +170,62 @@ class Reservoir
 private:
     String _description;
     Component *_pump;
-    VoltageSensor *_sensor;
 
     Component *_led;
-    bool _flash_led;
-
     bool _status;
 
 public:
-    Reservoir(String description, uint8_t pump_pin, uint8_t send_pin, uint8_t recieve_pin, uint8_t led_pin = -1)
+    Reservoir(String description, uint8_t pump_pin, uint8_t led_pin = -1)
     {
         _description = description;
         _pump = new Component(pump_pin);
-        _sensor = new VoltageSensor(send_pin, recieve_pin);
 
         Serial.println(led_pin);
         if (led_pin >= 0)
             _led = new Component(led_pin);
         else
             _led = NULL;
-
-        _flash_led = false;
-        _status = false;
     }
 
-    Reservoir(String description, Component *pump, VoltageSensor *sensor, Component *led = NULL)
+    Reservoir(String description, Component *pump, Component *led = NULL)
     {
         _description = description;
         _pump = pump;
-        _sensor = sensor;
         
         _led = led;
-
-        _flash_led = false;
-        _status = false;
     }
 
     ~Reservoir()
     {
         delete _pump;
-        delete _sensor;
         delete _led;
     }
 
     // solenoid is a valve,
     // amount is in mL
-    bool Douse(int amount)
+    void StartWatering(bool status_)
     {
-        if (DetectWater())
+        SetLed(status_);
+        _pump->TurnOn();
+    }
+
+    void StopWatering(int status_)
+    {
+        SetLed(status_);
+        _pump->TurnOff();
+    }
+
+    void SetLed(int status_)
+    {
+      Serial.println(status_);
+        if (_led != NULL)
         {
-            // water the plant
-            unsigned long time_end = millis() + (TIME_PER_MILLILITRE * amount);
-            Serial.println("Before pump on");
-            _pump->TurnOn();
-            Serial.println("After pump on");
-            while (millis() < time_end)
-            {
-                yield();
-                if (!DetectWater())
-                {
-                    _pump->TurnOff();
-                    return false;
-                }
-            }
-            Serial.println("after watering");
-
-            _pump->TurnOff();
-            delay(500); // let water drain back into reservoir TODO find accurate timing.
+            if (status_)
+                _led->TurnOn();
+            else
+                _led->TurnOff();
         }
-
-        return true;
-    }
-
-    bool DetectWater()
-    {
-        _status = _sensor->Detect();
-        // Serial.println(_status);
-        if (_status)
-            _led->TurnOn(); // turns the voltage to high to turn off.
-        return _status;
-    }
-
-    long Read()
-    {
-        return _sensor->Read();
-    }
-
-    void Status()
-    {
-        if (!DetectWater())
-            if (_led != NULL)
-                _led->Toggle();
+        Serial.println("wat");
     }
 
     String Message()
@@ -385,12 +306,14 @@ public:
             Serial.println("before douse");
             Douse();
             Serial.println("after douse");
-            _post_watering_moistures = ReadWaterLevels();
+            _post_watering_moistures = ReadWaterLevels();;
         }
         else
         {
             _post_watering_moistures = _pre_watering_moistures;
         }
+
+        Serial.println("after checking post watering");
     }
 
     bool ToWater()
@@ -406,8 +329,48 @@ public:
 
     void Douse()
     {
+        // solenoid for whenever that gets added in
         _solenoid->TurnOn();
-        _reservoir->Douse(250);
+        Serial.println("here");
+
+        long douse_end = millis() + _water_amount * TIME_PER_MILLILITRE;
+        long douse_check = millis() + 2000;
+        bool has_water = true;
+
+        _reservoir->StartWatering(!has_water);
+        while (millis() < douse_end && has_water)
+        {
+            Serial.println("Watering");
+            if (millis() > douse_check)
+            {
+                int size_ = _pre_watering_moistures.size();
+                Serial.println("Before getting watering levels");
+                 std::vector<float> _curr_watering_moistures = std::vector<float>();
+                 _curr_watering_moistures = ReadWaterLevels();
+
+                Serial.println("Checking if the watering is actually being performed");
+                for (int i = 0; i < _pre_watering_moistures.size(); i++)
+                {
+                  Serial.println(_pre_watering_moistures[i]);
+                  Serial.println(_curr_watering_moistures[i]);
+                }
+                
+                 for (int i = 0; i < 1; i++)
+                 {
+                     if (_pre_watering_moistures[i] + 3 >= _curr_watering_moistures[i])
+                     {
+                         has_water = false;
+                         Serial.println("--- No water remaining ---");
+                     }
+                     else
+                         break;
+                }
+                douse_check = millis() + 2000;
+            }
+          delay(100);
+        }
+        _reservoir->StopWatering(!has_water);
+
         _solenoid->TurnOff();
     }
 
@@ -429,7 +392,7 @@ public:
     String Message()
     {
         String msg = "";
-        msg.concat(0);
+        msg.concat(0); // type
         msg.concat(";");
 
         msg.concat(_name);
@@ -498,30 +461,11 @@ public:
         }
     }
 
-    // this is for debugging
-    std::vector<long> ReadReservoirs()
-    {
-        std::vector<long> reads = std::vector<long>();
-        for (auto reservoir : _reservoirs)
-            reads.push_back(reservoir->Read());
-
-        return reads;
-    }
-
-    void ReservoirStatuses()
-    {
-        for (auto reservoir : _reservoirs)
-            reservoir->Status();
-    }
-
     std::vector<String> Messages()
     {
         std::vector<String> msg = std::vector<String>();
         for (auto plant : _plants)
             msg.push_back(plant->Message());
-
-        for (auto reservoir : _reservoirs)
-            msg.push_back(reservoir->Message());
 
         return msg;
     }
@@ -647,7 +591,7 @@ public:
 const String _ssid = "";
 const String _password = "";
 
-const String _host = "192.168.0.36";
+const String _host = "192.168.0.26";
 const uint16_t _port = 8777;
 
 uint8_t _min_threshhold = 30;    // percent in which we water
@@ -703,9 +647,8 @@ void setup()
     String description = "main_reservoir";
     // D5, D2, D3, D6
     Component* main_reservoir_pump = new Component(14);
-    VoltageSensor* main_reservoir_sensor = new VoltageSensor(4, 0);
     Component* main_reservoir_led = new Component(12);
-    Reservoir *main_reserovir = new Reservoir(description, main_reservoir_pump, main_reservoir_sensor, main_reservoir_led);
+    Reservoir *main_reserovir = new Reservoir(description, main_reservoir_pump, main_reservoir_led);
     Serial.println("after making reservoir");
 
     uint8_t watering_threshold = 25; // 25%
@@ -714,10 +657,6 @@ void setup()
 
     Serial.println("Before making plant");
     Plant *hugh = new Plant(hugh_name, analog_pin, sensors_c, hugh_select_pins, mux, main_reserovir, watering_threshold, water_amount, solenoid_pin);
-    Serial.println("after making plant");
-
-    //      register reservoirs
-    _manager.RegisterReservoir(main_reserovir);
 
     // register plants
     _manager.RegisterPlant(hugh);
@@ -756,9 +695,6 @@ void loop()
         // for (auto v : values)
         //     _client.SendMessage(String(v) + ";");
     }
-
-    // Check the status of the reservoirs
-    _manager.ReservoirStatuses();
 
     // sleep for a certain amount of time
     delay(1000);
